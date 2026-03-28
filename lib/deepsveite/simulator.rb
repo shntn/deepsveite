@@ -54,7 +54,13 @@ module DeepSveite
 
     def _evaluate_conditions
       @_reg_conditions.each do |reg, conditions|
-        edge = reg.posedge ? :posedge : reg.negedge ? :negedge : nil
+        edge = if reg.posedge
+                 :posedge
+               elsif reg.negedge
+                 :negedge
+               else
+                 nil
+               end
         conditions.each do |cond|
           @ready_queue_regs << cond[:method] if cond[:edge].nil? || cond[:edge] == edge
         end
@@ -70,7 +76,10 @@ module DeepSveite
     end
 
     def update_sequential
-      @_regs.each(&:_update)
+      @_regs.each do |reg|
+        methods = reg._update
+        @ready_queue_regs |= methods
+      end
     end
 
     def update_combinational
