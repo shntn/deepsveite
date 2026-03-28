@@ -6,12 +6,24 @@ module DeepSveite
       @tb = test_bench
       @eb = DeepSveite::EnvironmentBuilder.new
       @_wires = []
+      @_regs = []
+      @_reg_conditions = {}
+      @ready_queue_regs = []
       @ready_queue_wires = []
     end
 
     def build
       @eb.build(self, @tb)
       update
+    end
+
+    def register_reg(reg)
+      @_regs << reg
+    end
+
+    def register_reg_condition(reg, edge:, method:)
+      @_reg_conditions[reg] ||= []
+      @_reg_conditions[reg] << { edge: edge, method: method }
     end
 
     def register_wire(wire)
@@ -26,16 +38,35 @@ module DeepSveite
 
     def _rtl_cycle
       while true
-        @ready_queue_wires.each do |method|
-          method.call
-        end
+        @ready_queue_regs.each  { |method| method.call }
+        @ready_queue_wires.each { |method| method.call }
+        @ready_queue_regs.clear
         @ready_queue_wires.clear
         update
-        break unless @ready_queue_wires.any?
+        _evaluate_conditions
+        break unless @ready_queue_regs.any? || @ready_queue_wires.any?
+      end
+    end
+
+    def _evaluate_conditions
+      @_reg_conditions.each do |reg, conditions|
+        edge = reg.posedge ? :posedge : reg.negedge ? :negedge : nil
+        conditions.each do |cond|
+          @ready_queue_regs << cond[:method] if cond[:edge].nil? || cond[:edge] == edge
+        end
       end
     end
 
     def update
+      update_sequential
+      update_combinational
+    end
+
+    def update_sequential
+      @_regs.each(&:_update)
+    end
+
+    def update_combinational
       @_wires.each do |wire|
         methods = wire._update
         @ready_queue_wires |= methods

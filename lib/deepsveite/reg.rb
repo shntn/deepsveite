@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module DeepSveite
-  class Wire < DeepSveite::Signal
+  class Reg < DeepSveite::Signal
     attr_accessor :_width, :_value, :_pending, :_name, :_parent, :_content, :_input, :_output
     def initialize(width: 1)
       @_width = width
@@ -31,7 +31,7 @@ module DeepSveite
     end
 
     def in
-      obj = DeepSveite::Wire.new(width: @_width)
+      obj = DeepSveite::Reg.new(width: @_width)
       obj._content = @_content
       obj._input = @_input
       obj._output = false
@@ -39,7 +39,7 @@ module DeepSveite
     end
 
     def out
-      obj = DeepSveite::Wire.new(width: @_width)
+      obj = DeepSveite::Reg.new(width: @_width)
       obj._content = @_content
       obj._input = false
       obj._output = @_output
@@ -54,28 +54,24 @@ module DeepSveite
       @_value != @_old && @_value == 0
     end
 
-    def w
+    def r
       unless @_input
-        raise "Wire #{@_name} is not an input"
+        raise "Reg #{@_name} is not an input"
       end
       @_content._value || 0
     end
 
-    def w=(value)
+    def r=(value)
       unless @_output
-        raise "Wire #{@_name} is not an output"
+        raise "Reg #{@_name} is not an output"
       end
       @_content._pending = value
     end
 
     def _update
       @_old = @_value
-      if @_value != @_pending
-        @_value = @_pending
-        @_register_destination
-      else
-        []
-      end
+      return if @_value == @_pending
+      @_value = @_pending
     end
   end
 end
