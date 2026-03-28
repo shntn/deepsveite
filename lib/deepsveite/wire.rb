@@ -3,10 +3,10 @@
 module DeepSveite
   class Wire < DeepSveite::Signal
     attr_accessor :_width, :_value, :_pending, :_name, :_parent, :_content, :_input, :_output
-    def initialize(width: 1)
+    def initialize(init: 0, width: 1)
       @_width = width
       @_value = nil
-      @_pending = 0
+      @_pending = init
       @_old = nil
       @_name = nil
       @_parent = nil
