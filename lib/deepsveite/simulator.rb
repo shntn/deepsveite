@@ -8,6 +8,7 @@ module DeepSveite
       @_clock = clock || DeepSveite::Wire.new
       @_wires = []
       @_regs = []
+      @_testbench_signals = []
       @_reg_conditions = {}
       @ready_queue_regs = []
       @ready_queue_wires = []
@@ -15,7 +16,8 @@ module DeepSveite
 
     def build
       @eb.build(self, @tb)
-      update
+      _rtl_update
+      _clock_update
     end
 
     def register_reg(reg)
@@ -31,6 +33,10 @@ module DeepSveite
       @_wires << wire
     end
 
+    def register_testbench_signal(wire)
+      @_testbench_signals << wire
+    end
+
     def run(&halt_condition)
       loop do
         step
@@ -40,14 +46,17 @@ module DeepSveite
 
     def step
       @_clock.w = @_clock.w == 1 ? 0 : 1
+      _testbench_update
+      _evaluate_conditions
       _rtl_cycle
+      _clock_update
     end
 
     def _rtl_cycle
       while true
         @ready_queue_regs.each  { |method| method.call }
         @ready_queue_wires.each { |method| method.call }
-        update
+        _rtl_update
         break unless @ready_queue_regs.any? || @ready_queue_wires.any?
       end
     end
@@ -67,12 +76,15 @@ module DeepSveite
       end
     end
 
-    def update
+    def _rtl_update
       @ready_queue_regs.clear
       @ready_queue_wires.clear
-      update_sequential
       update_combinational
-      _evaluate_conditions
+    end
+
+    def _clock_update
+      @ready_queue_regs.clear
+      update_sequential
     end
 
     def update_sequential
@@ -86,6 +98,17 @@ module DeepSveite
       @_wires.each do |wire|
         methods = wire._update
         @ready_queue_wires |= methods
+      end
+    end
+
+    def _testbench_update
+      @_testbench_signals.each do |signal|
+        methods = signal._update
+        if signal.is_a?(DeepSveite::Wire)
+          @ready_queue_wires |= methods
+        elsif signal.is_a?(DeepSveite::Reg)
+          @ready_queue_regs |= methods
+        end
       end
     end
   end

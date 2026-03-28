@@ -9,8 +9,10 @@ module DeepSveite
     end
 
     def build(sim, mod)
-      _register_signals_to_simulator(sim, mod)
-      unless mod.is_a?(DeepSveite::TestBench)
+      if mod.is_a?(DeepSveite::TestBench)
+        _register_testbench_signals_to_simulator(sim, mod)
+      else
+        _register_signals_to_simulator(sim, mod)
         _register_processes_to_wire(mod)
         _register_processes_to_reg(sim, mod)
       end
@@ -21,6 +23,7 @@ module DeepSveite
 
     def _recursive_module(sim, mod)
       mod.instance_variables.each do |ivar|
+        next if ivar.to_s.start_with?("@_")
         instance = mod.instance_variable_get(ivar)
         next if !(instance.class < DeepSveite::Module) || instance.class <= DeepSveite::TestBench
 
@@ -36,6 +39,18 @@ module DeepSveite
     def _set_info_to_instance(instance, parent, name)
       instance._parent = parent
       instance._name = name
+    end
+
+    def _register_testbench_signals_to_simulator(sim, mod)
+      mod.instance_variables.each do |ivar|
+        value = mod.instance_variable_get(ivar)
+        next unless _signal?(value)
+        _set_info_to_instance(value, mod, ivar.to_s[1..])
+        next unless value == value._content
+        if _signal?(value)
+          sim.register_testbench_signal(value)
+        end
+      end
     end
 
     def _register_signals_to_simulator(sim, mod)
