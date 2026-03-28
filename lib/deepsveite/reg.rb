@@ -70,8 +70,9 @@ module DeepSveite
 
     def _update
       @_old = @_value
-      return if @_value == @_pending
+      return [] if @_value == @_pending
       @_value = @_pending
+      @_register_destination
     end
   end
 end
