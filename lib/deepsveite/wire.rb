@@ -41,7 +41,10 @@ module DeepSveite
     def out
       obj = DeepSveite::Wire.new(width: @_width)
       obj._content = @_content
-      obj._input = false
+      # TODO :
+      # ビットセレクト、パートセレクトによる更新ができないため、
+      # 暫定処置として読み出しを許可
+      obj._input = @_input
       obj._output = @_output
       obj
     end
