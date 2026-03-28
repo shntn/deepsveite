@@ -33,8 +33,9 @@ module DeepSveite
       @_wires << wire
     end
 
-    def register_testbench_signal(wire)
-      @_testbench_signals << wire
+    def register_testbench_signal(signal)
+      @_testbench_signals << signal
+      signal.is_a?(DeepSveite::Wire) ? @_wires << signal : @_regs << signal
     end
 
     def run(&halt_condition)
