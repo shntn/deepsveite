@@ -2,9 +2,10 @@
 
 module DeepSveite
   class Simulator
-    def initialize(test_bench)
+    def initialize(test_bench, clock = nil)
       @tb = test_bench
       @eb = DeepSveite::EnvironmentBuilder.new
+      @_clock = clock || DeepSveite::Wire.new
       @_wires = []
       @_regs = []
       @_reg_conditions = {}
@@ -30,9 +31,15 @@ module DeepSveite
       @_wires << wire
     end
 
-    def run; end
+    def run(&halt_condition)
+      loop do
+        step
+        break if halt_condition.call
+      end
+    end
 
     def step
+      @_clock.w = @_clock.w == 1 ? 0 : 1
       _rtl_cycle
     end
 
@@ -40,10 +47,7 @@ module DeepSveite
       while true
         @ready_queue_regs.each  { |method| method.call }
         @ready_queue_wires.each { |method| method.call }
-        @ready_queue_regs.clear
-        @ready_queue_wires.clear
         update
-        _evaluate_conditions
         break unless @ready_queue_regs.any? || @ready_queue_wires.any?
       end
     end
@@ -58,8 +62,11 @@ module DeepSveite
     end
 
     def update
+      @ready_queue_regs.clear
+      @ready_queue_wires.clear
       update_sequential
       update_combinational
+      _evaluate_conditions
     end
 
     def update_sequential
