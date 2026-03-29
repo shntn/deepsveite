@@ -21,6 +21,17 @@ module DeepSveite
 
     private
 
+    def _collect_instance_variable(mod, kinds)
+      collection = []
+      mod.instance_variables.each do |ivar|
+        value = mod.instance_variable_get(ivar)
+        next unless kinds.any? { |klass| value.is_a?(klass) }
+        _set_info_to_instance(value, mod, ivar.to_s[1..])
+        collection << value
+      end
+      collection
+    end
+
     def _recursive_module(sim, mod)
       mod.instance_variables.each do |ivar|
         next if ivar.to_s.start_with?("@_")
@@ -42,24 +53,15 @@ module DeepSveite
     end
 
     def _register_testbench_signals_to_simulator(sim, mod)
-      mod.instance_variables.each do |ivar|
-        value = mod.instance_variable_get(ivar)
-        next unless _signal?(value)
-        _set_info_to_instance(value, mod, ivar.to_s[1..])
-        next unless value == value._content
-        if _signal?(value)
-          sim.register_testbench_signal(value)
-        end
-      end
+      collection = _collect_instance_variable(mod, [DeepSveite::Wire, DeepSveite::Reg])
+      sim.register_pre_active_collections(collection)
     end
 
     def _register_signals_to_simulator(sim, mod)
-      mod.instance_variables.each do |ivar|
-        value = mod.instance_variable_get(ivar)
-        next unless _signal?(value)
-        _set_info_to_instance(value, mod, ivar.to_s[1..])
+      collection = _collect_instance_variable(mod, [DeepSveite::Wire, DeepSveite::Reg])
+      collection.each do |value|
         next unless value == value._content
-        value.is_a?(DeepSveite::Reg) ? sim.register_reg(value) : sim.register_wire(value)
+        sim.register_rtl_collections(value)
       end
     end
 
