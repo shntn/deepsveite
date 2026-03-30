@@ -4,6 +4,7 @@ DS = DeepSveite
 
 # 4ビット カウンタ（非同期 active-low リセット付き）
 class Counter < DS::Module
+  attr_accessor :q
   always_ff :count_up,
             cond: [:clk.posedge, :rst.negedge],
             reads: [:rst],
@@ -12,7 +13,7 @@ class Counter < DS::Module
   def initialize(clk, rst, q)
     @clk = clk.in
     @rst = rst.in
-    @q   = q       # 読み書き両用（カウンタは自分の値を参照しながら更新する）
+    @q   = DS::Reg.new(width: 4)       # 読み書き両用（カウンタは自分の値を参照しながら更新する）
     super()
   end
 
@@ -26,13 +27,12 @@ class Counter < DS::Module
 end
 
 class Bench < DS::TestBench
-  attr_accessor :clk, :rst, :q
+  attr_accessor :clk, :rst, :counter
 
   def initialize
     super()
     @clk = DS::Wire.new
     @rst = DS::Wire.new
-    @q   = DS::Reg.new(width: 4)
     @counter = Counter.new(@clk, @rst, @q)
   end
 end
@@ -44,12 +44,12 @@ def main
 
   tb.rst.w = 1
 
-  sim.run do
-    if tb.clk.w == 1               # posedge のみ
-      print "q = #{tb.q.r}\n"
-      tb.rst.w = 0 if tb.q.r == 3  # q が 3 になったらリセット
+  7.times do
+    sim.step
+    if tb.clk.w == 1                                # posedge のみ
+      print "q = #{tb.counter.q.r}\n"
+      tb.rst.w = 0 if tb.counter.q.r == 3           # q が 3 になったらリセット
     end
-    tb.q.r == 0 && tb.clk.w == 1   # リセット後の posedge で終了
   end
 end
 

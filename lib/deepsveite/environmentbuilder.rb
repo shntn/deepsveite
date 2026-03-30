@@ -79,18 +79,9 @@ module DeepSveite
       mod.class._pending_sequential.each do |setup|
         method = mod.method(setup[:method])
         setup[:cond].each do |cond|
-          case cond
-          when false, nil
-            next
-          when true
-            sim.register_reg_condition(nil, edge: nil, method: method)
-          when String
-            signal_name, edge = cond.split(".")
-            reg = mod.instance_variable_get("@#{signal_name}")._content
-            sim.register_reg_condition(reg, edge: edge.to_sym, method: method)
-          else
-            raise ArgumentError, "invalid cond value: #{cond.inspect}"
-          end
+          signal = mod.instance_variable_get("@#{cond.name}")
+          edge_trigger = EdgeTrigger.new(signal._content, cond.edge, method)
+          sim.register_reg_condition(edge_trigger)
         end
       end
     end
