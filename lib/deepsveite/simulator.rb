@@ -7,7 +7,7 @@ module DeepSveite
       @eb = DeepSveite::EnvironmentBuilder.new
       @_clock = clock || DeepSveite::Wire.new
       @_pre_active_collections = []
-      @_reg_conditions = []
+      @_rtl_conditions = []
       @_rtl_collections = []
       @_rtl_eval_queue = []
     end
@@ -21,9 +21,9 @@ module DeepSveite
       @_pre_active_collections |= signals
     end
 
-    def register_reg_condition(edge_trigger)
-      @_reg_conditions ||= []
-      @_reg_conditions << edge_trigger
+    def register_rtl_condition(edge_trigger)
+      @_rtl_conditions ||= []
+      @_rtl_conditions << edge_trigger
     end
 
     def register_rtl_collections(signal)
@@ -48,13 +48,13 @@ module DeepSveite
       while true
         @_rtl_eval_queue.each  { |method| method.call }
         _rtl_update
-        # _update_pre_active
+        _update_pre_active
         break unless @_rtl_eval_queue.any?
       end
     end
 
     def _evaluate_conditions
-      @_reg_conditions.each do |trigger|
+      @_rtl_conditions.each do |trigger|
         @_rtl_eval_queue << trigger.method if trigger.met?
       end
     end
