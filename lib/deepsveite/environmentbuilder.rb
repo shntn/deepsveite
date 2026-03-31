@@ -61,7 +61,11 @@ module DeepSveite
       collection = _collect_instance_variable(mod, [DeepSveite::Wire, DeepSveite::Reg])
       collection.each do |value|
         next unless value == value._content
-        sim.register_rtl_collections(value)
+        if value.is_a?(DeepSveite::Reg)
+          sim.register_reg_collections(value)
+        else
+          sim.register_rtl_collections(value)
+        end
       end
     end
 

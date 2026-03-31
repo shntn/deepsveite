@@ -9,12 +9,15 @@ module DeepSveite
       @_pre_active_collections = []
       @_rtl_conditions = []
       @_rtl_collections = []
+      @_reg_collections = []
       @_rtl_eval_queue = []
+      @_pending_rtl_methods = []
     end
 
     def build
       @eb.build(self, @tb)
       _rtl_update
+      _clock_notification_phase
     end
 
     def register_pre_active_collections(signals)
@@ -31,6 +34,10 @@ module DeepSveite
       @_rtl_collections << signal
     end
 
+    def register_reg_collections(signal)
+      @_reg_collections << signal
+    end
+
     def run(&halt_condition)
       loop do
         step
@@ -42,10 +49,13 @@ module DeepSveite
       @_clock.w = @_clock.w == 1 ? 0 : 1
       _update_pre_active
       _rtl_cycle
+      # [TLM サイクル: 将来追加]
+      _clock_notification_phase
     end
 
     def _rtl_cycle
       _evaluate_conditions
+      _flush_pending_rtl_methods
       _run_delta_cycles
     end
 
@@ -108,6 +118,18 @@ module DeepSveite
       @_pre_active_collections.each do |signal|
         methods = signal._update
         @_rtl_eval_queue |= methods
+      end
+    end
+
+    def _flush_pending_rtl_methods
+      @_rtl_eval_queue |= @_pending_rtl_methods
+      @_pending_rtl_methods.clear
+    end
+
+    def _clock_notification_phase
+      @_reg_collections.each do |reg|
+        methods = reg._update
+        @_pending_rtl_methods |= methods
       end
     end
   end
