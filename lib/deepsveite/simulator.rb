@@ -19,6 +19,7 @@ module DeepSveite
 
     def register_pre_active_collections(signals)
       @_pre_active_collections |= signals
+      @_rtl_collections |= signals
     end
 
     def register_rtl_condition(edge_trigger)
@@ -57,11 +58,8 @@ module DeepSveite
       loop do
         delta_cycles += 1
         _check_delta_cycles(delta_cycles)
-
         _execute_eval_queue(process_counts)
-
         _rtl_update
-        _update_pre_active
         break unless @_rtl_eval_queue.any?
       end
     end
