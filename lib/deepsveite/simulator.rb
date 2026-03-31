@@ -45,11 +45,50 @@ module DeepSveite
 
     def _rtl_cycle
       _evaluate_conditions
-      while true
-        @_rtl_eval_queue.each  { |method| method.call }
+      _run_delta_cycles
+    end
+
+    private
+
+    def _run_delta_cycles
+      delta_cycles = 0
+      process_counts = Hash.new(0)
+
+      loop do
+        delta_cycles += 1
+        _check_delta_cycles(delta_cycles)
+
+        _execute_eval_queue(process_counts)
+
         _rtl_update
         _update_pre_active
         break unless @_rtl_eval_queue.any?
+      end
+    end
+
+    def _check_delta_cycles(delta_cycles)
+      if delta_cycles > 1000
+        raise "Infinite loop detected: maximum delta cycles (1000) exceeded"
+      end
+    end
+
+    def _execute_eval_queue(process_counts)
+      queue = @_rtl_eval_queue.dup
+      queue.each do |method|
+        _check_process_execution_limit(method, process_counts)
+        method.call
+      end
+    end
+
+    def _check_process_execution_limit(method, process_counts)
+      process_counts[method] += 1
+      if process_counts[method] > 100
+        method_name = if method.respond_to?(:receiver) && method.respond_to?(:name)
+                        "#{method.receiver.class}##{method.name}"
+                      else
+                        method.to_s
+                      end
+        raise "Infinite loop detected: process #{method_name} executed more than 100 times in a single step"
       end
     end
 
