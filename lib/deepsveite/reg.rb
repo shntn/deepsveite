@@ -10,17 +10,12 @@ module DeepSveite
       @_old = nil
       @_name = nil
       @_parent = nil
-      @_register_source = []
       @_register_destination = []
       @_content = self
       @_input = true
       @_output = true
       @_is_port = false
       super()
-    end
-
-    def _regist_source(method)
-      @_register_source << method
     end
 
     def _register_destination(process)
