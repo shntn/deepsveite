@@ -5,8 +5,8 @@ include DeepSveite
 DS = DeepSveite
 
 class MyModule < DS::Module
-  always_comb :routine, reads: [:din1, :din2], writes: [:internal]
-  always_comb :routine2, reads: [:internal], writes: [:dout]
+  always_comb :routine
+  always_comb :routine2
 
   def initialize(din1, din2, dout)
     @din1 = din1.in
@@ -17,7 +17,7 @@ class MyModule < DS::Module
   end
 
   def routine
-    @internal.w = @internal.w + @din1.w + @din2.w
+    @internal.w = @din1.w + @din2.w
     print "internal : #{@internal._content._pending}\n"
   end
 
@@ -32,7 +32,8 @@ class Bench < DS::TestBench
     super()
     @din1 = DeepSveite::Wire.new(width: 8)
     @din2 = DeepSveite::Wire.new(width: 8)
-    @din1.w = 1
+    @din1.w = 2
+    @din2.w = 3
     @dout = DeepSveite::Wire.new(width: 8)
     @mod = MyModule.new(@din1, @din2, @dout)
   end

@@ -2,7 +2,7 @@
 
 module DeepSveite
   class Reg < DeepSveite::Signal
-    attr_accessor :_width, :_value, :_pending, :_name, :_parent, :_content, :_input, :_output
+    attr_accessor :_width, :_value, :_pending, :_name, :_parent, :_content, :_input, :_output, :_is_port
     def initialize(width: 1)
       @_width = width
       @_value = nil
@@ -15,6 +15,7 @@ module DeepSveite
       @_content = self
       @_input = true
       @_output = true
+      @_is_port = false
       super()
     end
 
@@ -35,6 +36,7 @@ module DeepSveite
       obj._content = @_content
       obj._input = @_input
       obj._output = false
+      obj._is_port = true
       obj
     end
 
@@ -43,6 +45,7 @@ module DeepSveite
       obj._content = @_content
       obj._input = false
       obj._output = @_output
+      obj._is_port = true
       obj
     end
 
@@ -55,9 +58,6 @@ module DeepSveite
     end
 
     def r
-      unless @_input
-        raise "Reg #{@_name} is not an input"
-      end
       @_content._value || 0
     end
 
@@ -70,7 +70,9 @@ module DeepSveite
 
     def _update
       @_old = @_value
-      return [] if @_value == @_pending
+      if @_value == @_pending
+        return []
+      end
       @_value = @_pending
       @_register_destination
     end

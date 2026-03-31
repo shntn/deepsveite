@@ -6,9 +6,7 @@ DS = DeepSveite
 class Counter < DS::Module
   attr_accessor :q
   always_ff :count_up,
-            cond: [:clk.posedge, :rst.negedge],
-            reads: [:rst],
-            writes: [:q]
+            cond: [:clk.posedge, :rst.negedge]
 
   def initialize(clk, rst, q)
     @clk = clk.in

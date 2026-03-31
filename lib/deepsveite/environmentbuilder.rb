@@ -68,6 +68,9 @@ module DeepSveite
     def _register_processes_to_wire(mod)
       mod.class._pending_combinational.each do |setup|
         method = mod.method(setup[:method])
+        setup[:reads] ||= _collect_signals(mod, type: :input)
+        setup[:writes] ||= _collect_signals(mod, type: :output)
+
         setup[:reads].each do |s_name|
           signal = mod.instance_variable_get("@#{s_name}")
           signal._register_destination method
@@ -75,9 +78,25 @@ module DeepSveite
       end
     end
 
+    def _collect_signals(mod, type: :input)
+      mod.instance_variables.each_with_object([]) do |ivar, collection|
+        next if ivar.to_s.start_with?("@_")
+        value = mod.instance_variable_get(ivar)
+        next unless _signal?(value)
+        if type == :input
+          collection << ivar.to_s[1..].to_sym if value._input && (!value._is_port || !value._output)
+        elsif type == :output
+          collection << ivar.to_s[1..].to_sym if value._output
+        end
+      end
+    end
+
     def _register_processes_to_reg(sim, mod)
       mod.class._pending_sequential.each do |setup|
         method = mod.method(setup[:method])
+        setup[:reads] ||= _collect_signals(mod, type: :input)
+        setup[:writes] ||= _collect_signals(mod, type: :output)
+
         setup[:cond].each do |cond|
           signal = mod.instance_variable_get("@#{cond.name}")
           edge_trigger = EdgeTrigger.new(signal._content, cond.edge, method)

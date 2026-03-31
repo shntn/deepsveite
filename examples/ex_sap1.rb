@@ -12,7 +12,7 @@ class ProgramCounter < DeepSveite::Module
     super()
   end
 
-  always_ff :sequential_circuit, cond: [:clk.posedge], reads: [:n_clr, :pc_next], writes: [:pc]
+  always_ff :sequential_circuit, cond: [:clk.posedge]
   def sequential_circuit
     if @n_clr.w == 0
       @pc.r = 0
@@ -21,7 +21,7 @@ class ProgramCounter < DeepSveite::Module
     end
   end
 
-  always_comb :combinational_circuit, reads: [:n_clr, :cp, :ep, :pc], writes: [:pc_next, :pc_out]
+  always_comb :combinational_circuit
   def combinational_circuit
     @pc_next.w = @pc.r
 
@@ -54,14 +54,12 @@ class InputAndMemoryAddressRegister < DeepSveite::Module
     super()
   end
 
-  always_ff :sequential_circuit, cond: [:clk.posedge], reads: [:a_reg_next], writes: [:a_reg]
+  always_ff :sequential_circuit, cond: [:clk.posedge]
   def sequential_circuit
     @a_reg.r = @a_reg_next.w
   end
 
-  always_comb :combinational_circuit,
-              reads: [:a_reg, :n_lm, :ain, :select_a],
-              writes: [:a_reg_next, :select_a, :a]
+  always_comb :combinational_circuit
   def combinational_circuit
     @a_reg_next.w = @a_reg.r
 
@@ -111,7 +109,7 @@ class Ram < DeepSveite::Module
     super()
   end
 
-  always_comb :combinational_circuit, reads: [:n_ce, :a], writes: [:d]
+  always_comb :combinational_circuit
   def combinational_circuit
     if @n_ce.w == 0
       @d.w = MEMORY[@a.w & 0x0F]
@@ -136,10 +134,7 @@ class InstructionRegister < DeepSveite::Module
     super()
   end
 
-  always_ff :sequential_circuit,
-            cond: [:clk.posedge],
-            reads: [:clr, :inst_next, :imm_next],
-            writes: [:inst_latch, :imm_latch]
+  always_ff :sequential_circuit, cond: [:clk.posedge]
   def sequential_circuit
     if @clr.w != 0
       @inst_latch.r = 0
@@ -150,9 +145,7 @@ class InstructionRegister < DeepSveite::Module
     end
   end
 
-  always_comb :combinational_circuit,
-              reads: [:inst_latch, :imm_latch, :imm, :clr, :data, :n_li, :n_ei, :d],
-              writes: [:inst_next, :imm_next, :data, :inst, :imm]
+  always_comb :combinational_circuit
   def combinational_circuit
     @inst_next.w = @inst_latch.r
     @imm_next.w  = @imm_latch.r
@@ -211,10 +204,7 @@ class ControllerSequencer < DeepSveite::Module
     super()
   end
 
-  always_ff :sequential_circuit,
-            cond: [:clk.posedge],
-            reads: [:n_clr, :t_next],
-            writes: [:t]
+  always_ff :sequential_circuit, cond: [:clk.posedge]
   def sequential_circuit
     if @n_clr.w == 0
       @t.r = 0
@@ -223,11 +213,7 @@ class ControllerSequencer < DeepSveite::Module
     end
   end
 
-  always_comb :combinational_circuit,
-              reads: [:t, :inst, :n_clr],
-              writes: [:t_next, :inst_lda, :inst_add, :inst_sub, :inst_out,
-                       :n_halt, :cp, :ep, :n_lm, :n_ce, :n_li, :n_ei,
-                       :n_la, :ea, :su, :eu, :n_lb, :n_lo]
+  always_comb :combinational_circuit
   def combinational_circuit
     @t_next.w = @t.r
 
@@ -292,14 +278,12 @@ class Accumulator < DeepSveite::Module
     super()
   end
 
-  always_ff :sequential_circuit, cond: [:clk.posedge], reads: [:data_next], writes: [:data]
+  always_ff :sequential_circuit, cond: [:clk.posedge]
   def sequential_circuit
     @data.r = @data_next.w
   end
 
-  always_comb :combinational_circuit,
-              reads: [:data, :n_la, :ea, :din, :data_in],
-              writes: [:data_next, :data_in, :dout_to_alu, :dout_to_bus]
+  always_comb :combinational_circuit
   def combinational_circuit
     @data_next.w = @data.r
 
@@ -333,9 +317,7 @@ class AdderSubtractor < DeepSveite::Module
     super()
   end
 
-  always_comb :combinational_circuit,
-              reads: [:su, :eu, :din1, :din2, :op2],
-              writes: [:op2, :data_out]
+  always_comb :combinational_circuit
   def combinational_circuit
     if @su.w != 0
       @op2.w = -@din2.w
@@ -360,14 +342,12 @@ class BRegister < DeepSveite::Module
     super()
   end
 
-  always_ff :sequential_circuit, cond: [:clk.posedge], reads: [:data_next], writes: [:data]
+  always_ff :sequential_circuit, cond: [:clk.posedge]
   def sequential_circuit
     @data.r = @data_next.w
   end
 
-  always_comb :combinational_circuit,
-              reads: [:data, :n_lb, :din, :data_in],
-              writes: [:data_next, :data_in, :dout]
+  always_comb :combinational_circuit
   def combinational_circuit
     @data_next.w = @data.r
 
@@ -398,14 +378,12 @@ class OutputRegister < DeepSveite::Module
     super()
   end
 
-  always_ff :sequential_circuit, cond: [:clk.posedge], reads: [:data_next], writes: [:data]
+  always_ff :sequential_circuit, cond: [:clk.posedge]
   def sequential_circuit
     @data.r = @data_next.w
   end
 
-  always_comb :combinational_circuit,
-              reads: [:data, :n_lo, :din, :data_in],
-              writes: [:data_next, :data_in, :data_next, :dout]
+  always_comb :combinational_circuit
   def combinational_circuit
     @data_next.w = @data.r
 
@@ -435,12 +413,12 @@ class BinaryDisplay < DeepSveite::Module
     super()
   end
 
-  always_ff :sequential_circuit, cond: [:clk.posedge], reads: [:data_next], writes: [:data]
+  always_ff :sequential_circuit, cond: [:clk.posedge]
   def sequential_circuit
     @data.r = @data_next.w
   end
 
-  always_comb :combinational_circuit, reads: [:din], writes: [:data_next]
+  always_comb :combinational_circuit
   def combinational_circuit
     @data_next.w = @din.w
   end
@@ -509,7 +487,7 @@ class Sap1 < DeepSveite::Module
     super()
   end
 
-  always_comb :combinational_circuit, reads: [:clr], writes: [:n_clr]
+  always_comb :combinational_circuit
   def combinational_circuit
     @n_clr.w = @clr.w != 0 ? 0 : 1
   end

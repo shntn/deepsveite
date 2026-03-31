@@ -9,12 +9,12 @@ module DeepSveite
       @_parent = nil
     end
 
-    def self.always_ff(method_name, cond: [], reads: [], writes: [])
+    def self.always_ff(method_name, cond: [], reads: nil, writes: nil)
       @_sequential ||= []
       @_sequential << { method: method_name, cond: cond, reads: reads, writes: writes }
     end
 
-    def self.always_comb(method_name, reads: [], writes: [])
+    def self.always_comb(method_name, reads: nil, writes: nil)
       @_combinational ||= []
       @_combinational << { method: method_name, reads: reads, writes: writes }
     end

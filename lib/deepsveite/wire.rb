@@ -2,7 +2,7 @@
 
 module DeepSveite
   class Wire < DeepSveite::Signal
-    attr_accessor :_width, :_value, :_pending, :_name, :_parent, :_content, :_input, :_output
+    attr_accessor :_width, :_value, :_pending, :_name, :_parent, :_content, :_input, :_output, :_is_port
     def initialize(init: 0, width: 1)
       @_width = width
       @_value = nil
@@ -15,6 +15,7 @@ module DeepSveite
       @_content = self
       @_input = true
       @_output = true
+      @_is_port = false
       super()
     end
 
@@ -35,6 +36,7 @@ module DeepSveite
       obj._content = @_content
       obj._input = @_input
       obj._output = false
+      obj._is_port = true
       obj
     end
 
@@ -46,6 +48,7 @@ module DeepSveite
       # 暫定処置として読み出しを許可
       obj._input = @_input
       obj._output = @_output
+      obj._is_port = true
       obj
     end
 
@@ -58,10 +61,12 @@ module DeepSveite
     end
 
     def w
-      unless @_input
-        raise "Wire #{@_name} is not an input"
+      cache = Thread.current[:deepsveite_local_cache]
+      if cache && cache.has_key?(@_content.object_id)
+        cache[@_content.object_id]
+      else
+        @_content._value || 0
       end
-      @_content._value || 0
     end
 
     def w=(value)
@@ -69,6 +74,8 @@ module DeepSveite
         raise "Wire #{@_name} is not an output"
       end
       @_content._pending = value
+      cache = Thread.current[:deepsveite_local_cache]
+      cache[@_content.object_id] = value if cache
     end
 
     def _update
