@@ -61,12 +61,7 @@ module DeepSveite
     end
 
     def w
-      cache = Thread.current[:deepsveite_local_cache]
-      if cache && cache.has_key?(@_content.object_id)
-        cache[@_content.object_id]
-      else
-        @_content._value || 0
-      end
+      @_content._value || 0
     end
 
     def w=(value)
@@ -74,8 +69,6 @@ module DeepSveite
         raise "Wire #{@_name} is not an output"
       end
       @_content._pending = value
-      cache = Thread.current[:deepsveite_local_cache]
-      cache[@_content.object_id] = value if cache
     end
 
     def _update
