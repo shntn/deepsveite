@@ -31,6 +31,32 @@ class Bench < DeepSveite::TestBench
   end
 end
 
+# reads: / writes: を省略した always_comb: 全入力ポートが自動でトリガー対象になる
+class AutoBuffer < DeepSveite::Module
+  always_comb :propagate  # reads: / writes: を省略
+
+  def initialize(din, dout)
+    @din  = din.in
+    @dout = dout.out
+    super()
+  end
+
+  def propagate
+    @dout.w = @din.w
+  end
+end
+
+class AutoBufferBench < DeepSveite::TestBench
+  attr_accessor :din, :dout
+
+  def initialize
+    super()
+    @din  = DeepSveite::Wire.new(width: 8)
+    @dout = DeepSveite::Wire.new(width: 8)
+    @buf  = AutoBuffer.new(@din, @dout)
+  end
+end
+
 class TestModule < Minitest::Test
   def test_module_is_subclass
     assert_kind_of DeepSveite::Module, Class.new(DeepSveite::Module).new
@@ -96,5 +122,17 @@ class TestModule < Minitest::Test
     tb.b.w = 6
     sim.step
     assert_equal 11, tb.result.w
+  end
+
+  # reads: を省略した always_comb は全入力ポートを自動収集してトリガー対象にする
+  def test_auto_collect_reads
+    tb  = AutoBufferBench.new
+    sim = DeepSveite::Simulator.new(tb)
+    sim.build
+
+    tb.din.w = 42
+    sim.step
+
+    assert_equal 42, tb.dout.w
   end
 end
