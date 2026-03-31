@@ -68,10 +68,9 @@ module DeepSveite
     def _register_processes_to_wire(mod)
       mod.class._pending_combinational.each do |setup|
         method = mod.method(setup[:method])
-        setup[:reads] ||= _collect_signals(mod, type: :input)
-        setup[:writes] ||= _collect_signals(mod, type: :output)
+        reads = setup[:reads] || _collect_signals(mod, type: :input)
 
-        setup[:reads].each do |s_name|
+        reads.each do |s_name|
           signal = mod.instance_variable_get("@#{s_name}")
           signal._register_destination method
         end
@@ -94,8 +93,6 @@ module DeepSveite
     def _register_processes_to_reg(sim, mod)
       mod.class._pending_sequential.each do |setup|
         method = mod.method(setup[:method])
-        setup[:reads] ||= _collect_signals(mod, type: :input)
-        setup[:writes] ||= _collect_signals(mod, type: :output)
 
         setup[:cond].each do |cond|
           signal = mod.instance_variable_get("@#{cond.name}")
