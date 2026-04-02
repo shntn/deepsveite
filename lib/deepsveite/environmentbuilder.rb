@@ -15,6 +15,8 @@ module DeepSveite
         _register_signals_to_simulator(sim, mod)
         _register_processes_to_wire(mod)
         _register_processes_to_reg(sim, mod)
+        _register_sockets(sim, mod)
+        _register_tlm_processes(sim, mod)
       end
       _recursive_module(sim, mod)
     end
@@ -91,6 +93,23 @@ module DeepSveite
         elsif type == :output
           collection << ivar.to_s[1..].to_sym if value._output
         end
+      end
+    end
+
+    def _register_sockets(sim, mod)
+      mod.instance_variables.each do |ivar|
+        next if ivar.to_s.start_with?("@_")
+        value = mod.instance_variable_get(ivar)
+        next unless value.is_a?(DeepSveite::Socket)
+        _set_info_to_instance(value, mod, ivar.to_s[1..])
+        value._sim = sim
+      end
+    end
+
+    def _register_tlm_processes(sim, mod)
+      mod.class._pending_process.each do |setup|
+        method = mod.method(setup[:method])
+        sim.register_tlm_process(method)
       end
     end
 

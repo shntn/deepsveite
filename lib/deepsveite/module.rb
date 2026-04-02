@@ -19,12 +19,25 @@ module DeepSveite
       @_combinational << { method: method_name, reads: reads, writes: writes }
     end
 
+    def self.process(method_name)
+      @_process ||= []
+      @_process << { method: method_name }
+    end
+
     def self._pending_sequential
       @_sequential || []
     end
 
     def self._pending_combinational
       @_combinational || []
+    end
+
+    def self._pending_process
+      @_process || []
+    end
+
+    def wait
+      Fiber.yield(:next_cycle)
     end
   end
 end

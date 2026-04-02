@@ -12,6 +12,8 @@ module DeepSveite
       @_reg_collections = []
       @_rtl_eval_queue = []
       @_pending_rtl_methods = []
+      @_tlm_queue = []
+      @_pending_tlm_fibers = []
     end
 
     def build
@@ -38,10 +40,23 @@ module DeepSveite
       @_reg_collections << signal
     end
 
+    def socket_transport(target_socket, method_name, args, &block)
+      # VCD モニタリングポイント（将来実装）
+      target_socket._parent.send(method_name, *args, &block)
+    end
+
+    def register_tlm_process(method)
+      @_tlm_queue << Fiber.new { method.call }
+    end
+
     def run(&halt_condition)
-      loop do
-        step
-        break if halt_condition.call
+      if block_given?
+        loop do
+          step
+          break if halt_condition.call
+        end
+      else
+        _tlm_cycle
       end
     end
 
@@ -49,7 +64,7 @@ module DeepSveite
       @_clock.w = @_clock.w == 1 ? 0 : 1
       _update_pre_active
       _rtl_cycle
-      # [TLM サイクル: 将来追加]
+      _tlm_cycle
       _clock_notification_phase
     end
 
@@ -121,9 +136,28 @@ module DeepSveite
       end
     end
 
+    def _tlm_cycle
+      until @_tlm_queue.empty?
+        queue = @_tlm_queue.dup
+        @_tlm_queue.clear
+        queue.each do |fiber|
+          result = fiber.resume
+          _handle_tlm_fiber(fiber, result) if fiber.alive?
+        end
+      end
+    end
+
     def _flush_pending_rtl_methods
       @_rtl_eval_queue |= @_pending_rtl_methods
       @_pending_rtl_methods.clear
+    end
+
+    def _handle_tlm_fiber(fiber, result)
+      case result
+      when :next_cycle
+        @_pending_tlm_fibers << fiber
+      # 将来: when Event, FIFO など
+      end
     end
 
     def _clock_notification_phase
@@ -131,6 +165,8 @@ module DeepSveite
         methods = reg._update
         @_pending_rtl_methods |= methods
       end
+      @_tlm_queue |= @_pending_tlm_fibers
+      @_pending_tlm_fibers.clear
     end
   end
 end
