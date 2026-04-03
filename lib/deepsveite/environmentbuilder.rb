@@ -11,12 +11,14 @@ module DeepSveite
     def build(sim, mod)
       if mod.is_a?(DeepSveite::TestBench)
         _register_testbench_signals_to_simulator(sim, mod)
+        _register_fifos(sim, mod)
       else
         _register_signals_to_simulator(sim, mod)
         _register_processes_to_wire(mod)
         _register_processes_to_reg(sim, mod)
         _register_sockets(sim, mod)
         _register_tlm_processes(sim, mod)
+        _register_fifos(sim, mod)
       end
       _recursive_module(sim, mod)
     end
@@ -110,6 +112,14 @@ module DeepSveite
       mod.class._pending_process.each do |setup|
         method = mod.method(setup[:method])
         sim.register_tlm_process(method)
+      end
+    end
+
+    def _register_fifos(sim, mod)
+      mod.instance_variables.each do |ivar|
+        next if ivar.to_s.start_with?("@_")
+        value = mod.instance_variable_get(ivar)
+        sim.register_fifo_collection(value) if value.is_a?(DeepSveite::FIFO)
       end
     end
 

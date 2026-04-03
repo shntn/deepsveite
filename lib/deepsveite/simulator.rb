@@ -14,6 +14,7 @@ module DeepSveite
       @_pending_rtl_methods = []
       @_tlm_queue = []
       @_pending_tlm_fibers = []
+      @_fifo_collections = []
     end
 
     def build
@@ -45,6 +46,10 @@ module DeepSveite
       target_socket._parent.send(method_name, *args, &block)
     end
 
+    def register_fifo_collection(fifo)
+      @_fifo_collections << fifo
+    end
+
     def register_tlm_process(method)
       @_tlm_queue << Fiber.new { method.call }
     end
@@ -56,7 +61,11 @@ module DeepSveite
           break if halt_condition.call
         end
       else
-        _tlm_cycle
+        loop do
+          _tlm_cycle
+          _tlm_clock_notification
+          break if @_tlm_queue.empty? && @_pending_tlm_fibers.empty?
+        end
       end
     end
 
@@ -154,19 +163,23 @@ module DeepSveite
 
     def _handle_tlm_fiber(fiber, result)
       case result
-      when :next_cycle
-        @_pending_tlm_fibers << fiber
-      # 将来: when Event, FIFO など
+      when :next_cycle then @_pending_tlm_fibers << fiber
+      when :fifo_wait  then # FIFO が管理。_clock_tick で起床
+      # 将来: when Event など
       end
+    end
+
+    def _tlm_clock_notification
+      @_fifo_collections.each { |fifo| @_tlm_queue |= fifo._clock_tick }
+      @_tlm_queue |= @_pending_tlm_fibers
+      @_pending_tlm_fibers.clear
     end
 
     def _clock_notification_phase
       @_reg_collections.each do |reg|
-        methods = reg._update
-        @_pending_rtl_methods |= methods
+        @_pending_rtl_methods |= reg._update
       end
-      @_tlm_queue |= @_pending_tlm_fibers
-      @_pending_tlm_fibers.clear
+      _tlm_clock_notification
     end
   end
 end
