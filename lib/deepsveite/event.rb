@@ -10,6 +10,7 @@ module DeepSveite
       @_name    = nil
       @_waiting = []
       @_latches = []
+      @_fired   = false
     end
 
     def reader = EventReader.new(self)
@@ -27,8 +28,18 @@ module DeepSveite
       @_latches.delete(latch)
     end
 
+    def _vcd_probe
+      VCDProbe.new(
+        name:   @_name,
+        parent: @_parent,
+        width:  1,
+        reset:  -> { @_fired = false }
+      ) { @_fired ? 1 : 0 }
+    end
+
     # 即時通知: 同一 TLM デルタサイクルで待機 Fiber を起床
     def _notify
+      @_fired = true
       fibers  = @_waiting.dup
       latches = @_latches.dup
       @_waiting.clear
@@ -39,6 +50,7 @@ module DeepSveite
 
     # 遅延通知: 次のクロック通知フェーズで待機 Fiber を起床
     def _notify_deferred
+      @_fired = true
       fibers  = @_waiting.dup
       latches = @_latches.dup
       @_waiting.clear

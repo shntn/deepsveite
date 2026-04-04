@@ -2,11 +2,16 @@
 
 module DeepSveite
   class FIFO
-    def initialize(size: Float::INFINITY)
+    attr_accessor :_name, :_parent
+
+    def initialize(size: 5, width: 8)
       @size            = size
+      @width           = width
       @pending         = []  # write されたデータ（まだ読めない）
       @ready           = []  # 読み出し可能なデータ
       @waiting_readers = []  # read 待ちの Fiber
+      @_name           = nil
+      @_parent         = nil
     end
 
     def reader = FIFOReader.new(self)
@@ -18,6 +23,12 @@ module DeepSveite
 
     def _register_waiting_reader(fiber)
       @waiting_readers << fiber
+    end
+
+    def _vcd_probes
+      (0...@size).map do |i|
+        VCDProbe.new(name: "#{@_name}[#{i}]", parent: @_parent, width: @width) { (@pending + @ready)[i] || 0 }
+      end
     end
 
     # クロック通知フェーズで呼ばれる。起床させる Fiber の配列を返す

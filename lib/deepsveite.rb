@@ -7,6 +7,7 @@ class Symbol
   def negedge  = DeepSveite::ConditionDescriptor.new(self, :negedge)
 end
 
+require_relative "deepsveite/vcdprobe"
 require_relative "deepsveite/signal"
 require_relative "deepsveite/conditiondescriptor"
 require_relative "deepsveite/edgetrigger"

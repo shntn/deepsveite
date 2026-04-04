@@ -37,6 +37,7 @@ module DeepSveite
         @changes << [time, @id_map[sig], val, sig._width]
         @last_values[sig] = val
       end
+      @sim.instance_variable_get(:@_tlm_vcd_collections).each(&:_reset)
     end
 
     # VCD ファイルを書き出す
@@ -46,11 +47,12 @@ module DeepSveite
 
     private
 
-    # canonical な信号（ポートビューを除く）だけを収集
+    # canonical な信号（ポートビューを除く）と TLM プローブを収集
     def _collect_signals
-      rtl = @sim.instance_variable_get(:@_rtl_collections)
-      reg = @sim.instance_variable_get(:@_reg_collections)
-      (rtl + reg).uniq.select { |sig| sig == sig._content }
+      rtl    = @sim.instance_variable_get(:@_rtl_collections)
+      reg    = @sim.instance_variable_get(:@_reg_collections)
+      probes = @sim.instance_variable_get(:@_tlm_vcd_collections)
+      (rtl + reg).uniq.select { |sig| sig == sig._content } + probes
     end
 
     # 各信号に VCD 識別子（'!' 〜）を割り当てる

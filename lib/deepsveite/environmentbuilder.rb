@@ -125,6 +125,7 @@ module DeepSveite
         next unless value.is_a?(DeepSveite::Event)
         _set_info_to_instance(value, mod, ivar.to_s[1..])
         value._sim = sim
+        sim.register_tlm_vcd_probe(value._vcd_probe)
       end
     end
 
@@ -159,7 +160,10 @@ module DeepSveite
       mod.instance_variables.each do |ivar|
         next if ivar.to_s.start_with?("@_")
         value = mod.instance_variable_get(ivar)
-        sim.register_fifo_collection(value) if value.is_a?(DeepSveite::FIFO)
+        next unless value.is_a?(DeepSveite::FIFO)
+        _set_info_to_instance(value, mod, ivar.to_s[1..])
+        sim.register_fifo_collection(value)
+        value._vcd_probes.each { |p| sim.register_tlm_vcd_probe(p) }
       end
     end
 

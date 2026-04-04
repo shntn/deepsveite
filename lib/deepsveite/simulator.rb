@@ -16,6 +16,7 @@ module DeepSveite
       @_pending_tlm_fibers = []
       @_all_tlm_fibers = []
       @_fifo_collections = []
+      @_tlm_vcd_collections = []
       @_vcd = nil
       @_step_count = 0
     end
@@ -57,6 +58,10 @@ module DeepSveite
       @_fifo_collections << fifo
     end
 
+    def register_tlm_vcd_probe(probe)
+      @_tlm_vcd_collections << probe
+    end
+
     def _tlm_notify_immediate(fibers)
       @_tlm_queue |= fibers
     end
@@ -79,8 +84,10 @@ module DeepSveite
         end
       else
         loop do
+          @_step_count += 1
           _tlm_cycle
           _tlm_clock_notification
+          @_vcd&._tick(@_step_count)
           break if @_all_tlm_fibers.all? { |f| !f.alive? }
         end
       end
