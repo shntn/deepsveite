@@ -15,6 +15,7 @@ module DeepSveite
         _register_events(sim, mod)
       else
         _register_signals_to_simulator(sim, mod)
+        _register_signal_arrays(sim, mod)
         _register_processes_to_wire(mod)
         _register_processes_to_reg(sim, mod)
         _register_sockets(sim, mod)
@@ -124,6 +125,33 @@ module DeepSveite
         next unless value.is_a?(DeepSveite::Event)
         _set_info_to_instance(value, mod, ivar.to_s[1..])
         value._sim = sim
+      end
+    end
+
+    def _register_signal_arrays(sim, mod)
+      mod.instance_variables.each do |ivar|
+        next if ivar.to_s.start_with?("@_")
+        value = mod.instance_variable_get(ivar)
+        array_name = ivar.to_s[1..]
+
+        case value
+        when DeepSveite::RegArray
+          value._parent = mod
+          value._name   = array_name
+          value._elements.each_with_index do |elem, i|
+            elem._parent = mod
+            elem._name   = "#{array_name}[#{i}]"
+            sim.register_reg_collections(elem)
+          end
+        when DeepSveite::WireArray
+          value._parent = mod
+          value._name   = array_name
+          value._elements.each_with_index do |elem, i|
+            elem._parent = mod
+            elem._name   = "#{array_name}[#{i}]"
+            sim.register_rtl_collections(elem)
+          end
+        end
       end
     end
 
