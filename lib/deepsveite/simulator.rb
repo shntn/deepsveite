@@ -15,6 +15,8 @@ module DeepSveite
       @_tlm_queue = []
       @_pending_tlm_fibers = []
       @_fifo_collections = []
+      @_vcd = nil
+      @_step_count = 0
     end
 
     def build
@@ -39,6 +41,10 @@ module DeepSveite
 
     def register_reg_collections(signal)
       @_reg_collections << signal
+    end
+
+    def _attach_vcd(vcd)
+      @_vcd = vcd
     end
 
     def socket_transport(target_socket, method_name, args, &block)
@@ -78,11 +84,13 @@ module DeepSveite
     end
 
     def step
+      @_step_count += 1
       @_clock.w = @_clock.w == 1 ? 0 : 1
       _update_pre_active
       _rtl_cycle
       _tlm_cycle
       _clock_notification_phase
+      @_vcd&._tick(@_step_count)
     end
 
     def _rtl_cycle

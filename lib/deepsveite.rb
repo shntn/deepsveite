@@ -17,6 +17,7 @@ require_relative "deepsveite/event"
 require_relative "deepsveite/environmentbuilder"
 require_relative "deepsveite/simulator"
 require_relative "deepsveite/testbench"
+require_relative "deepsveite/vcd"
 
 
 module DeepSveite; end

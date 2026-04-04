@@ -515,13 +515,12 @@ end
 
 def main
   tb  = TbSAP1.new
-  #vcd = VCDWriter()
   sim = DeepSveite::Simulator.new(tb, tb.clk)
-  #vcd.open("sap1.vcd")
   sim.build
+  vcd = DeepSveite::VCD.new(sim, filename: "examples/sap1.vcd")
   tb.run(sim)
   print "Binary Display : #{tb.sap1.m_bd.data.r}\n"
-  #vcd.close()
+  vcd.write
 end
 
 main
