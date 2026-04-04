@@ -135,13 +135,6 @@ class TestEvent < Minitest::Test
     event_a  = DeepSveite::Event.new
     event_b  = DeepSveite::Event.new
 
-    waiter = DeepSveite::Module.new.tap do |m|
-      m.instance_variable_set(:@log, [])
-      m.define_singleton_method(:log) { @log }
-      m.define_singleton_method(:reader_a=) { |r| @reader_a = r }
-      m.define_singleton_method(:reader_b=) { |r| @reader_b = r }
-    end
-
     # OR 待機 + a のみ notify するシンプルな構成を直接クラスで表現
     class << (or_waiter = DeepSveite::Module.new)
       attr_accessor :reader_a, :reader_b
