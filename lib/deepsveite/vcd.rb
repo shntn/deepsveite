@@ -45,6 +45,15 @@ module DeepSveite
       File.open(filename, "w") { |f| _write(f) }
     end
 
+    # シミュレーション中に動的に追加されるプローブを登録する
+    def _register_probe(probe)
+      return if @signals.include?(probe)
+      @signals << probe
+      @id_map[probe]         = (33 + @id_map.size).chr
+      @initial_values[probe] = 0
+      @last_values[probe]    = 0
+    end
+
     private
 
     # canonical な信号（ポートビューを除く）と TLM プローブを収集

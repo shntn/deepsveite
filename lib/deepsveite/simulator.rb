@@ -16,6 +16,7 @@ module DeepSveite
       @_pending_tlm_fibers = []
       @_all_tlm_fibers = []
       @_fifo_collections = []
+      @_socket_collections = []
       @_tlm_vcd_collections = []
       @_vcd = nil
       @_step_count = 0
@@ -50,12 +51,21 @@ module DeepSveite
     end
 
     def socket_transport(target_socket, method_name, args, &block)
-      # VCD モニタリングポイント（将来実装）
-      target_socket._parent.send(method_name, *args, &block)
+      result = target_socket._parent.send(method_name, *args, &block)
+      if @_vcd
+        _record_socket_result(target_socket, result)
+        @_step_count += 1
+        @_vcd._tick(@_step_count)
+      end
+      result
     end
 
     def register_fifo_collection(fifo)
       @_fifo_collections << fifo
+    end
+
+    def register_socket_collection(socket)
+      @_socket_collections << socket
     end
 
     def register_tlm_vcd_probe(probe)
@@ -112,6 +122,33 @@ module DeepSveite
     end
 
     private
+
+    def _record_socket_result(socket, result)
+      case result
+      when Integer
+        w = socket._width.is_a?(Integer) ? socket._width : 64
+        _ensure_socket_probe(socket, nil, w)
+        socket._probes[nil]._set_value(result)
+      when Hash
+        result.each do |key, val|
+          next unless val.is_a?(Integer)
+          w = socket._width.is_a?(Hash) ? (socket._width[key] || 64) : (socket._width || 64)
+          _ensure_socket_probe(socket, key, w)
+          socket._probes[key]._set_value(val)
+        end
+      end
+    end
+
+    def _ensure_socket_probe(socket, key, width)
+      return if socket._probes.key?(key)
+      name  = key ? "#{socket._name}_#{key}" : socket._name
+      probe = VCDProbe.new(name: name, parent: socket._parent, width: width) do
+        socket._probes[key]._current_value
+      end
+      socket._probes[key] = probe
+      register_tlm_vcd_probe(probe)
+      @_vcd._register_probe(probe)
+    end
 
     def _clear_all_writers
       (@_rtl_collections + @_reg_collections).each(&:_clear_writer)

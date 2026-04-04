@@ -12,8 +12,10 @@ module DeepSveite
       @_reset_proc = reset
     end
 
-    def _content = self
-    def _value   = @_value_proc.call
-    def _reset   = @_reset_proc&.call
+    def _content        = self
+    def _value          = @_value_proc.call
+    def _reset          = @_reset_proc&.call
+    def _set_value(val)  = (@_current_value = val)
+    def _current_value   = @_current_value ||= 0
   end
 end

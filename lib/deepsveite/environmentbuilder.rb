@@ -108,6 +108,7 @@ module DeepSveite
         next unless value.is_a?(DeepSveite::Socket)
         _set_info_to_instance(value, mod, ivar.to_s[1..])
         value._sim = sim
+        sim.register_socket_collection(value) if value._method  # ターゲット側のみ登録
       end
     end
 
