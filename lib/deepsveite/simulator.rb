@@ -14,6 +14,7 @@ module DeepSveite
       @_pending_rtl_methods = []
       @_tlm_queue = []
       @_pending_tlm_fibers = []
+      @_all_tlm_fibers = []
       @_fifo_collections = []
       @_vcd = nil
       @_step_count = 0
@@ -65,7 +66,9 @@ module DeepSveite
     end
 
     def register_tlm_process(method)
-      @_pending_tlm_fibers << Fiber.new { method.call }
+      fiber = Fiber.new { method.call }
+      @_all_tlm_fibers << fiber
+      @_pending_tlm_fibers << fiber
     end
 
     def run(&halt_condition)
@@ -78,7 +81,7 @@ module DeepSveite
         loop do
           _tlm_cycle
           _tlm_clock_notification
-          break if @_tlm_queue.empty? && @_pending_tlm_fibers.empty?
+          break if @_all_tlm_fibers.all? { |f| !f.alive? }
         end
       end
     end
