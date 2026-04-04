@@ -59,7 +59,7 @@ module DeepSveite
     end
 
     def register_tlm_process(method)
-      @_tlm_queue << Fiber.new { method.call }
+      @_pending_tlm_fibers << Fiber.new { method.call }
     end
 
     def run(&halt_condition)
@@ -187,7 +187,7 @@ module DeepSveite
       @_reg_collections.each do |reg|
         @_pending_rtl_methods |= reg._update
       end
-      _tlm_clock_notification
+      _tlm_clock_notification if @_clock.w == 1
     end
   end
 end
