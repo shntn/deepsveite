@@ -172,7 +172,7 @@ class InstructionRegister < DeepSveite::Module
     # ラッチしたデータを出力
     if @n_ei.w == 0
       @inst.w = @inst_latch.r
-      @imm.w  = (@imm.w & 0xF0) | @imm_latch.r
+      @imm.w  = @imm_latch.r
     end
   end
 end
@@ -442,7 +442,7 @@ class Sap1 < DeepSveite::Module
     @or_out   = DeepSveite::Wire.new(width: 8)
 
     # bus
-    @bus      = DeepSveite::Wire.new(width: 8)
+    @bus      = DeepSveite::Wire.new(width: 4)
 
     # control signals
     @cp     = DeepSveite::Wire.new
