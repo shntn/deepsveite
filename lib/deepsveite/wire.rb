@@ -55,6 +55,34 @@ module DeepSveite
       @_value != @_old && @_value == 0
     end
 
+    def [](selector)
+      val = @_content._value || 0
+      case selector
+      when Integer
+        (val >> selector) & 1
+      when Range
+        lo, hi = selector.min, selector.max
+        mask = (1 << (hi - lo + 1)) - 1
+        (val >> lo) & mask
+      end
+    end
+
+    def []=(selector, new_val)
+      unless @_output
+        raise "Wire #{@_name} is not an output"
+      end
+      current = @_content._pending
+      case selector
+      when Integer
+        bit = new_val == 0 ? 0 : 1
+        @_content._pending = bit == 0 ? current & ~(1 << selector) : current | (1 << selector)
+      when Range
+        lo, hi = selector.min, selector.max
+        mask = (1 << (hi - lo + 1)) - 1
+        @_content._pending = (current & ~(mask << lo)) | ((new_val & mask) << lo)
+      end
+    end
+
     def w
       @_content._value || 0
     end
