@@ -38,10 +38,7 @@ module DeepSveite
     def out
       obj = DeepSveite::Wire.new(width: @_width)
       obj._content = @_content
-      # TODO :
-      # ビットセレクト、パートセレクトによる更新ができないため、
-      # 暫定処置として読み出しを許可
-      obj._input = @_input
+      obj._input = false
       obj._output = @_output
       obj._is_port = true
       obj
@@ -56,6 +53,9 @@ module DeepSveite
     end
 
     def [](selector)
+      unless @_input
+        raise "Reg #{@_name} is not an input"
+      end
       val = @_content._value || 0
       case selector
       when Integer
@@ -84,6 +84,9 @@ module DeepSveite
     end
 
     def w
+      unless @_input
+        raise "Wire #{@_name} is not an input"
+      end
       @_content._value || 0
     end
 

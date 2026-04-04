@@ -48,9 +48,6 @@ class TestWire < Minitest::Test
     wire_out = wire.out
 
     assert_raises(RuntimeError) { wire_in.w = 15 }
-    # TODO :
-    # ビットセレクト、パートセレクトによる更新ができないため、
-    # 暫定処置として読み出しを許可
-    #assert_raises(RuntimeError) { wire_out.w }
+    assert_raises(RuntimeError) { wire_out.w }
   end
 end

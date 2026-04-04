@@ -53,6 +53,9 @@ module DeepSveite
     end
 
     def [](selector)
+      unless @_input
+        raise "Reg #{@_name} is not an input"
+      end
       val = @_content._value || 0
       case selector
       when Integer
@@ -81,6 +84,9 @@ module DeepSveite
     end
 
     def r
+      unless @_input
+        raise "Reg #{@_name} is not an input"
+      end
       @_content._value || 0
     end
 
