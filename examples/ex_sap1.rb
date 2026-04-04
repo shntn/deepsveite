@@ -75,8 +75,6 @@ class InputAndMemoryAddressRegister < DeepSveite::Module
 
     # アドレス出力
     @a.w = @a_reg.r
-    if @a.w != @a_reg.r
-    end
   end
 end
 
