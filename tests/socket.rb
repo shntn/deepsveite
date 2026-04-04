@@ -3,15 +3,13 @@
 require "minitest/autorun"
 require_relative "../lib/deepsveite"
 
-DS = DeepSveite
-
 # キー・バリュー ストア（ターゲット側モジュール）
 # Socket にメソッド名を登録し、イニシエータからの呼び出しを受け付ける
-class KVStore < DS::Module
+class KVStore < DeepSveite::Module
   attr_accessor :socket
 
   def initialize
-    @socket = DS::Socket.new(method: :transaction)
+    @socket = DeepSveite::Socket.new(method: :transaction)
     @store  = {}
     super()
   end
@@ -29,12 +27,12 @@ end
 
 # クライアント（イニシエータ側モジュール）
 # bind した先の Socket のメソッドを呼び出す
-class KVClient < DS::Module
+class KVClient < DeepSveite::Module
   attr_accessor :socket
   attr_reader   :results
 
   def initialize(&run_block)
-    @socket     = DS::Socket.new
+    @socket     = DeepSveite::Socket.new
     @results    = []
     @run_block  = run_block
     super()
@@ -44,7 +42,7 @@ class KVClient < DS::Module
   def run = @run_block.call(self)
 end
 
-class KVBench < DS::TestBench
+class KVBench < DeepSveite::TestBench
   attr_reader :store, :client
 
   def initialize(&client_block)
@@ -66,7 +64,7 @@ class TestSocket < Minitest::Test
       r = c.socket.transaction(cmd: :read,  key: :x)
       c.results << r[:value]
     end
-    sim = DS::Simulator.new(tb)
+    sim = DeepSveite::Simulator.new(tb)
     sim.build
     sim.run
 
@@ -79,7 +77,7 @@ class TestSocket < Minitest::Test
       r = c.socket.transaction(cmd: :read, key: :missing)
       c.results << r[:value]
     end
-    sim = DS::Simulator.new(tb)
+    sim = DeepSveite::Simulator.new(tb)
     sim.build
     sim.run
 
@@ -92,7 +90,7 @@ class TestSocket < Minitest::Test
       r = c.socket.transaction(cmd: :write, key: :a, value: 99)
       c.results << r[:status]
     end
-    sim = DS::Simulator.new(tb)
+    sim = DeepSveite::Simulator.new(tb)
     sim.build
     sim.run
 
@@ -110,7 +108,7 @@ class TestSocket < Minitest::Test
         c.results << r[:value]
       end
     end
-    sim = DS::Simulator.new(tb)
+    sim = DeepSveite::Simulator.new(tb)
     sim.build
     sim.run
 
@@ -125,7 +123,7 @@ class TestSocket < Minitest::Test
       r = c.socket.transaction(cmd: :read, key: :x)
       c.results << r[:value]
     end
-    sim = DS::Simulator.new(tb)
+    sim = DeepSveite::Simulator.new(tb)
     sim.build
     sim.run
 
@@ -137,7 +135,7 @@ class TestSocket < Minitest::Test
     tb = KVBench.new do |c|
       c.results << :not_called
     end
-    sim = DS::Simulator.new(tb)
+    sim = DeepSveite::Simulator.new(tb)
     sim.build
 
     assert_raises(NoMethodError) do
