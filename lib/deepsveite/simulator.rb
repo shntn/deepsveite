@@ -86,6 +86,7 @@ module DeepSveite
     def step
       @_step_count += 1
       @_clock.w = @_clock.w == 1 ? 0 : 1
+      _clear_all_writers
       _update_pre_active
       _rtl_cycle
       _tlm_cycle
@@ -97,9 +98,15 @@ module DeepSveite
       _evaluate_conditions
       _flush_pending_rtl_methods
       _run_delta_cycles
+      _check_rtl_multiple_drivers
     end
 
     private
+
+    def _clear_all_writers
+      (@_rtl_collections + @_reg_collections).each(&:_clear_writer)
+      DeepSveite._process_written_signals.clear
+    end
 
     def _run_delta_cycles
       delta_cycles = 0
@@ -124,7 +131,30 @@ module DeepSveite
       queue = @_rtl_eval_queue.dup
       queue.each do |method|
         _check_process_execution_limit(method, process_counts)
-        method.call
+        _clear_process_written_signals(method)
+        begin
+          DeepSveite.current_process = method
+          method.call
+        ensure
+          DeepSveite.current_process = nil
+        end
+      end
+    end
+
+    def _clear_process_written_signals(process)
+      written = DeepSveite._process_written_signals[process]
+      return unless written
+      written.each { |signal| signal._remove_writer(process) }
+      written.clear
+    end
+
+    def _check_rtl_multiple_drivers
+      seen = Set.new
+      (@_rtl_collections + @_reg_collections).each do |signal|
+        content = signal._content
+        next if seen.include?(content)
+        seen.add(content)
+        content._check_multiple_drivers
       end
     end
 

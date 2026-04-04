@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'set'
+
 class Symbol
   def posedge = DeepSveite::ConditionDescriptor.new(self, :posedge)
   def negedge  = DeepSveite::ConditionDescriptor.new(self, :negedge)
@@ -22,4 +24,10 @@ require_relative "deepsveite/testbench"
 require_relative "deepsveite/vcd"
 
 
-module DeepSveite; end
+module DeepSveite
+  @current_process = nil
+  @_process_written_signals = {}
+  class << self
+    attr_accessor :current_process, :_process_written_signals
+  end
+end

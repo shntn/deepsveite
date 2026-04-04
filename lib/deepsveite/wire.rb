@@ -15,6 +15,7 @@ module DeepSveite
       @_input = true
       @_output = true
       @_is_port = false
+      @_writers_this_step = Set.new
       super()
     end
 
@@ -23,6 +24,43 @@ module DeepSveite
         @_register_destination << process
       else
         @_content._register_destination(process)
+      end
+    end
+
+    def _check_driver(process)
+      return if process.nil?
+      if self == @_content
+        @_writers_this_step.add(process)
+        (DeepSveite._process_written_signals[process] ||= Set.new).add(self)
+      else
+        @_content._check_driver(process)
+      end
+    end
+
+    def _clear_writer
+      if self == @_content
+        @_writers_this_step.clear
+      else
+        @_content._clear_writer
+      end
+    end
+
+    def _remove_writer(process)
+      if self == @_content
+        @_writers_this_step.delete(process)
+      else
+        @_content._remove_writer(process)
+      end
+    end
+
+    def _check_multiple_drivers
+      if self == @_content
+        return if @_writers_this_step.size < 2
+        sig     = @_name || "(unnamed)"
+        writers = @_writers_this_step.map { |m| _process_label(m) }.join(" and ")
+        raise "Multiple drivers on wire '#{sig}': #{writers}"
+      else
+        @_content._check_multiple_drivers
       end
     end
 
@@ -56,7 +94,7 @@ module DeepSveite
       unless @_input
         raise "Reg #{@_name} is not an input"
       end
-      val = @_content._value || 0
+      val = @_content._pending || 0
       case selector
       when Integer
         (val >> selector) & 1
@@ -71,7 +109,8 @@ module DeepSveite
       unless @_output
         raise "Wire #{@_name} is not an output"
       end
-      current = @_content._pending
+      @_content._check_driver(DeepSveite.current_process)
+      current = @_content._pending || 0
       case selector
       when Integer
         bit = new_val == 0 ? 0 : 1
@@ -87,13 +126,14 @@ module DeepSveite
       unless @_input
         raise "Wire #{@_name} is not an input"
       end
-      @_content._value || 0
+      @_content._pending || 0
     end
 
     def w=(value)
       unless @_output
         raise "Wire #{@_name} is not an output"
       end
+      @_content._check_driver(DeepSveite.current_process)
       @_content._pending = value
     end
 
@@ -105,6 +145,12 @@ module DeepSveite
       else
         []
       end
+    end
+
+    private
+
+    def _process_label(method)
+      method.respond_to?(:receiver) ? "#{method.receiver.class}##{method.name}" : method.to_s
     end
   end
 end

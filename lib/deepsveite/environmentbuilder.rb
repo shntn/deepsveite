@@ -94,7 +94,7 @@ module DeepSveite
         value = mod.instance_variable_get(ivar)
         next unless _signal?(value)
         if type == :input
-          collection << ivar.to_s[1..].to_sym if value._input && (!value._is_port || !value._output)
+          collection << ivar.to_s[1..].to_sym if value._input && (value.is_a?(DeepSveite::Reg) || value._is_port)
         elsif type == :output
           collection << ivar.to_s[1..].to_sym if value._output
         end
