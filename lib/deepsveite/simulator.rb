@@ -50,6 +50,14 @@ module DeepSveite
       @_fifo_collections << fifo
     end
 
+    def _tlm_notify_immediate(fibers)
+      @_tlm_queue |= fibers
+    end
+
+    def _tlm_notify_deferred(fibers)
+      @_pending_tlm_fibers |= fibers
+    end
+
     def register_tlm_process(method)
       @_tlm_queue << Fiber.new { method.call }
     end
@@ -163,9 +171,9 @@ module DeepSveite
 
     def _handle_tlm_fiber(fiber, result)
       case result
-      when :next_cycle then @_pending_tlm_fibers << fiber
-      when :fifo_wait  then # FIFO が管理。_clock_tick で起床
-      # 将来: when Event など
+      when :next_cycle  then @_pending_tlm_fibers << fiber
+      when :fifo_wait   then # FIFO が管理。_clock_tick で起床
+      when :event_wait  then # Event が管理。notify/_notify_deferred で起床
       end
     end
 

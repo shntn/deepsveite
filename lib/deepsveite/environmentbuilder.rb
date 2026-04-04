@@ -12,6 +12,7 @@ module DeepSveite
       if mod.is_a?(DeepSveite::TestBench)
         _register_testbench_signals_to_simulator(sim, mod)
         _register_fifos(sim, mod)
+        _register_events(sim, mod)
       else
         _register_signals_to_simulator(sim, mod)
         _register_processes_to_wire(mod)
@@ -19,6 +20,7 @@ module DeepSveite
         _register_sockets(sim, mod)
         _register_tlm_processes(sim, mod)
         _register_fifos(sim, mod)
+        _register_events(sim, mod)
       end
       _recursive_module(sim, mod)
     end
@@ -112,6 +114,16 @@ module DeepSveite
       mod.class._pending_process.each do |setup|
         method = mod.method(setup[:method])
         sim.register_tlm_process(method)
+      end
+    end
+
+    def _register_events(sim, mod)
+      mod.instance_variables.each do |ivar|
+        next if ivar.to_s.start_with?("@_")
+        value = mod.instance_variable_get(ivar)
+        next unless value.is_a?(DeepSveite::Event)
+        _set_info_to_instance(value, mod, ivar.to_s[1..])
+        value._sim = sim
       end
     end
 
