@@ -16,6 +16,39 @@ SystemC / SystemVerilog のエッセンスを参考に、Ruby のシンプルな
 
 ---
 
+## 概要
+
+### 想定用途
+
+- RTL設計の動作検証・プロトタイピング（Verilator / SystemC を用意せずRubyだけで動かす）
+- TLMによるアーキテクチャ探索・高抽象度モデリング
+- RTL / TLM協調シミュレーション（CPUコアとメモリモデルを同一シミュレータ上で動かすなど）
+
+### RTL シミュレーション
+
+クロック駆動のシミュレーション層です。`always_comb` / `always_ff` でHDLと同様の記述スタイルを使えます。delta cycle収束により組み合わせ回路の多段伝播を自動で処理します。
+
+使用できる信号:
+
+- **Wire** — 組み合わせ信号。`always_comb` の出力
+- **Reg** — 順序信号。Non-Blocking Assignment（NBA）でクロックエッジに同期して確定
+
+### TLM シミュレーション
+
+クロックを抽象化したシミュレーション層です。RubyのFiberを利用して `process` / `wait` を自然に記述できます。
+
+使用できる通信オブジェクト:
+
+- **Socket** — ターゲット / イニシエータ間のトランザクション呼び出し
+- **FIFO** — プロデューサ / コンシューマ間のキュー（満杯 / 空でブロック）
+- **Event** — プロセス間の同期通知（即時・遅延・OR・AND）
+
+### VCD 記録
+
+RTL信号・TLM信号（FIFO / Event / Socket）を同一波形ビューアで確認できます。Eventの即時通知（`notify`）と遅延通知（`notify_deferred`）の違いも波形上で観察できます。`sim.build` 後に `VCD.new` を1行追加するだけで全信号を自動収集し、モジュール階層をVCDスコープに反映します。
+
+---
+
 ## 動作環境
 
 - Ruby 3.0 以上（endless method 構文を使用）
@@ -251,25 +284,6 @@ class PaletteLUT < DS::Module
 end
 ```
 
-### TLM でのデータストア
-
-TLM モジュール内では RTL クロックなしに即時読み書きできるデータストアとして使えます。
-
-```ruby
-class ScratchPad < DS::Module
-  process :run
-  def initialize
-    @mem = DS::RegArray.new(width: 32, size: 16)
-    super()
-  end
-  def run
-    @mem[0] = 100
-    @mem[1] = 200
-    puts @mem[0] + @mem[1]   # => 300
-  end
-end
-```
-
 ---
 
 ## TLM シミュレーション
@@ -423,7 +437,7 @@ $upscope $end
 | `examples/ex_wire.rb` | Wire と always\_comb の基本 |
 | `examples/ex_reg.rb` | Reg と always\_ff（カウンタ） |
 | `examples/ex_bitselect.rb` | ビットセレクト / パートセレクト |
-| `examples/ex_array.rb` | RegArray（シンクロナス RAM）/ WireArray（パレットLUT）/ TLM データストア |
+| `examples/ex_array.rb` | RegArray（シンクロナス RAM）/ WireArray（パレットLUT） |
 | `examples/ex_socket.rb` | TLM Socket（CPU ↔ メモリ） |
 | `examples/ex_fifo.rb` | TLM FIFO（1クロック遅延） |
 | `examples/ex_event.rb` | TLM Event（即時・遅延・OR・AND） |
