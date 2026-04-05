@@ -172,52 +172,8 @@ def demo_palette
 end
 
 # ==========================================================================
-# デモ 3: RegArray + TLM — ソフトウェアモデルのスクラッチパッドメモリ
-#
-#   TLM プロセスから RegArray を直接読み書きする。
-#   RTL クロックを使わないので即時反映される。
-# ==========================================================================
-
-class ScratchPad < DS::Module
-  attr_reader :log
-  process :run
-
-  def initialize
-    @mem = DS::RegArray.new(width: 32, size: 16)
-    @log = []
-    super()
-  end
-
-  def run
-    # フィボナッチ数列をメモリに書き込む
-    @mem[0] = 0
-    @mem[1] = 1
-    2.upto(7) { |i| @mem[i] = @mem[i - 1] + @mem[i - 2] }
-
-    # 読み出してログに記録
-    0.upto(7) { |i| @log << @mem[i] }
-  end
-end
-
-def demo_scratchpad
-  puts "=== デモ 3: RegArray + TLM (スクラッチパッドメモリ) ==="
-
-  pad = ScratchPad.new
-  tb  = DS::TestBench.new
-  tb.instance_variable_set(:@pad, pad)
-
-  sim = DS::Simulator.new(tb)
-  sim.build
-  sim.run
-
-  puts "  Fibonacci: #{pad.log.join(', ')}"
-  puts ""
-end
-
-# ==========================================================================
 # エントリポイント
 # ==========================================================================
 
 demo_ram
 demo_palette
-demo_scratchpad
