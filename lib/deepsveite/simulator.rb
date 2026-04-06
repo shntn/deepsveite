@@ -50,14 +50,14 @@ module DeepSveite
       @_vcd = vcd
     end
 
-    def socket_transport(target_socket, method_name, args, &block)
-      result = target_socket._parent.send(method_name, *args, &block)
+    def socket_transport(target_socket, method_name, payload, &block)
+      target_socket._parent.send(method_name, payload, &block)
       if @_vcd
-        _record_socket_result(target_socket, result)
+        _record_socket_payload(target_socket, payload)
         @_step_count += 1
         @_vcd._tick(@_step_count)
       end
-      result
+      payload
     end
 
     def register_fifo_collection(fifo)
@@ -123,25 +123,18 @@ module DeepSveite
 
     private
 
-    def _record_socket_result(socket, result)
-      case result
-      when Integer
-        w = socket._width.is_a?(Integer) ? socket._width : 64
-        _ensure_socket_probe(socket, nil, w)
-        socket._probes[nil]._set_value(result)
-      when Hash
-        result.each do |key, val|
-          next unless val.is_a?(Integer)
-          w = socket._width.is_a?(Hash) ? (socket._width[key] || 64) : (socket._width || 64)
-          _ensure_socket_probe(socket, key, w)
-          socket._probes[key]._set_value(val)
-        end
+    def _record_socket_payload(socket, payload)
+      return unless payload.is_a?(DeepSveite::Payload)
+      payload.class._fields.each do |field_def|
+        key = field_def[:name]
+        _ensure_socket_probe(socket, key, field_def[:width])
+        socket._probes[key]._set_value(payload._field_int_value(key))
       end
     end
 
     def _ensure_socket_probe(socket, key, width)
       return if socket._probes.key?(key)
-      name  = key ? "#{socket._name}_#{key}" : socket._name
+      name  = "#{socket._name}_#{key}"
       probe = VCDProbe.new(name: name, parent: socket._parent, width: width) do
         socket._probes[key]._current_value
       end

@@ -305,18 +305,30 @@ end
 
 ### Socket
 
+トランザクションのフィールドは `DS::Payload` サブクラスで定義します。
+ビット幅（`width:`）と enum マッピング（`enum:`）をここに集約することで、
+VCD 記録も自動化されます。
+
 ```ruby
+# Payload 定義（フィールド・ビット幅・enum を一元管理）
+class MemPayload < DS::Payload
+  field :cmd,    width: 1,  enum: { READ: 0, WRITE: 1 }
+  field :addr,   width: 16
+  field :data,   width: 8
+  field :status, width: 1,  enum: { OK: 0, ERROR: 1 }
+end
+
 # ターゲット
 class Memory < DS::Module
   attr_accessor :mem_socket
   def initialize
-    @mem_socket = DS::Socket.new(method: :b_transport)
+    @mem_socket = DS::Socket.new(method: :b_transport, payload: MemPayload)
     super()
   end
 
-  def b_transport(payload)
-    # read / write 処理
-    payload
+  def b_transport(payload)  # payload は MemPayload インスタンス（in-place 変更）
+    payload.data   = @mem.fetch(payload.addr, 0xFF) if payload.cmd == :READ
+    payload.status = :OK
   end
 end
 
@@ -326,9 +338,9 @@ class CPU < DS::Module
   process :run
 
   def run
-    @mem_socket.b_transport(cmd: "WRITE", addr: 0x100, data: 0xAB)
-    r = @mem_socket.b_transport(cmd: "READ",  addr: 0x100)
-    puts "read: 0x#{r[:data].to_s(16)}"
+    @mem_socket.b_transport(cmd: :WRITE, addr: 0x100, data: 0xAB)
+    r = @mem_socket.b_transport(cmd: :READ, addr: 0x100)
+    puts "read: 0x#{r.data.to_s(16)}"
   end
 end
 
@@ -439,6 +451,7 @@ $upscope $end
 | `examples/ex_bitselect.rb` | ビットセレクト / パートセレクト |
 | `examples/ex_array.rb` | RegArray（シンクロナス RAM）/ WireArray（パレットLUT） |
 | `examples/ex_socket.rb` | TLM Socket（CPU ↔ メモリ） |
+| `examples/ex_socket_vcd.rb` | TLM Socket VCD 出力（Payload フィールド波形記録） |
 | `examples/ex_fifo.rb` | TLM FIFO（1クロック遅延） |
 | `examples/ex_event.rb` | TLM Event（即時・遅延・OR・AND） |
 | `examples/ex_rtl_tlm.rb` | RTL / TLM 協調シミュレーション |
@@ -489,6 +502,7 @@ lib/deepsveite/
   regarray.rb           RegArray（Reg の配列）
   module.rb             Module 基底（always_comb / always_ff / process / wait）
   testbench.rb          TestBench 基底
+  payload.rb            TLM Payload（フィールド定義・enum・VCD幅）
   socket.rb             TLM Socket
   fifo.rb               TLM FIFO
   event.rb              TLM Event / EventOrReader / EventAndReader / Latch

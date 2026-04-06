@@ -2,35 +2,39 @@ require_relative "../lib/deepsveite"
 
 DS = DeepSveite
 
-# Socket VCD サンプル: トランザクションごとの戻り値を波形記録
+# Socket VCD サンプル: トランザクションごとの全フィールドを波形記録
 #
-# CPU が Memory に READ/WRITE を発行するたびに
-# socket_transport 内でステップカウントをインクリメントし、
-# 戻り値（Hash）の各整数フィールドを VCD プローブに記録する。
-# "OK" などの文字列フィールドはスキップされる。
+# Payload クラスにフィールド定義（ビット幅・enum）を集約することで、
+# Socket 側に width: を書かずに VCD 記録が自動化される。
+# enum フィールド（cmd, status）も整数値としてVCDに記録される。
+
+class MemPayload < DS::Payload
+  field :cmd,    width: 1,  enum: { READ: 0, WRITE: 1 }
+  field :addr,   width: 16
+  field :data,   width: 8
+  field :status, width: 1,  enum: { OK: 0, ERROR: 1 }
+end
 
 class Memory < DS::Module
   attr_accessor :mem_socket
 
   def initialize
-    # width: でフィールドごとのビット幅を指定（Hashの整数値のみ記録）
-    @mem_socket = DS::Socket.new(method: :b_transport, width: { addr: 16, data: 8 })
+    @mem_socket = DS::Socket.new(method: :b_transport, payload: MemPayload)
     @mem = {}
     super()
   end
 
   def b_transport(payload)
-    case payload[:cmd]
-    when "READ"
-      payload[:data]   = @mem.fetch(payload[:addr], 0xFF)
-      payload[:status] = "OK"
-    when "WRITE"
-      @mem[payload[:addr]] = payload[:data]
-      payload[:status] = "OK"
+    case payload.cmd
+    when :READ
+      payload.data   = @mem.fetch(payload.addr, 0xFF)
+      payload.status = :OK
+    when :WRITE
+      @mem[payload.addr] = payload.data
+      payload.status = :OK
     else
-      payload[:status] = "ERROR"
+      payload.status = :ERROR
     end
-    payload
   end
 end
 
@@ -45,14 +49,14 @@ class CPU < DS::Module
   end
 
   def run
-    @mem_socket.b_transport(cmd: "WRITE", addr: 0x100, data: 0xAB)
-    @mem_socket.b_transport(cmd: "WRITE", addr: 0x101, data: 0xCD)
-    r0 = @mem_socket.b_transport(cmd: "READ", addr: 0x100)
-    r1 = @mem_socket.b_transport(cmd: "READ", addr: 0x101)
-    r2 = @mem_socket.b_transport(cmd: "READ", addr: 0xFFF)
-    puts "0x100=#{format('%02X', r0[:data])}, " \
-         "0x101=#{format('%02X', r1[:data])}, " \
-         "0xFFF=#{format('%02X', r2[:data])}(未初期化)"
+    @mem_socket.b_transport(cmd: :WRITE, addr: 0x100, data: 0xAB)
+    @mem_socket.b_transport(cmd: :WRITE, addr: 0x101, data: 0xCD)
+    r0 = @mem_socket.b_transport(cmd: :READ, addr: 0x100)
+    r1 = @mem_socket.b_transport(cmd: :READ, addr: 0x101)
+    r2 = @mem_socket.b_transport(cmd: :READ, addr: 0xFFF)
+    puts "0x100=#{format('%02X', r0.data)}, " \
+         "0x101=#{format('%02X', r1.data)}, " \
+         "0xFFF=#{format('%02X', r2.data)}(未初期化)"
   end
 end
 

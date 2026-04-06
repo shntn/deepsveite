@@ -8,6 +8,7 @@ class Symbol
 end
 
 require_relative "deepsveite/vcdprobe"
+require_relative "deepsveite/payload"
 require_relative "deepsveite/signal"
 require_relative "deepsveite/conditiondescriptor"
 require_relative "deepsveite/edgetrigger"
