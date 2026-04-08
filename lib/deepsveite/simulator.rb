@@ -18,6 +18,7 @@ module DeepSveite
       @_fifo_collections = []
       @_socket_collections = []
       @_tlm_vcd_collections = []
+      @_vcd_signal_monitors = []
       @_vcd = nil
       @_step_count = 0
     end
@@ -55,7 +56,7 @@ module DeepSveite
       if @_vcd
         _record_socket_payload(target_socket, payload)
         @_step_count += 1
-        @_vcd._tick(@_step_count)
+        _vcd_tick
       end
       payload
     end
@@ -66,6 +67,10 @@ module DeepSveite
 
     def register_socket_collection(socket)
       @_socket_collections << socket
+    end
+
+    def register_vcd_signal_monitor(mod, name, width)
+      @_vcd_signal_monitors << { mod: mod, name: name, width: width, probes: {} }
     end
 
     def register_tlm_vcd_probe(probe)
@@ -97,7 +102,7 @@ module DeepSveite
           @_step_count += 1
           _tlm_cycle
           _tlm_clock_notification
-          @_vcd&._tick(@_step_count)
+          _vcd_tick
           break if @_all_tlm_fibers.all? { |f| !f.alive? }
         end
       end
@@ -111,7 +116,7 @@ module DeepSveite
       _rtl_cycle
       _tlm_cycle
       _clock_notification_phase
-      @_vcd&._tick(@_step_count)
+      _vcd_tick
     end
 
     def _rtl_cycle
@@ -122,6 +127,40 @@ module DeepSveite
     end
 
     private
+
+    def _vcd_tick
+      return unless @_vcd
+      _update_vcd_signal_monitors
+      @_vcd._tick(@_step_count)
+    end
+
+    def _update_vcd_signal_monitors
+      @_vcd_signal_monitors.each do |monitor|
+        val = monitor[:mod].instance_variable_get(:"@#{monitor[:name]}")
+        case val
+        when Integer
+          _ensure_vcd_monitor_probe(monitor, nil)
+          monitor[:probes][nil]._set_value(val)
+        when Hash
+          val.each do |key, v|
+            next unless v.is_a?(Integer)
+            _ensure_vcd_monitor_probe(monitor, key)
+            monitor[:probes][key]._set_value(v)
+          end
+        end
+      end
+    end
+
+    def _ensure_vcd_monitor_probe(monitor, key)
+      return if monitor[:probes].key?(key)
+      probe_name = key ? "#{monitor[:name]}_#{key}" : monitor[:name].to_s
+      probe = VCDProbe.new(name: probe_name, parent: monitor[:mod], width: monitor[:width]) do
+        monitor[:probes][key]._current_value
+      end
+      monitor[:probes][key] = probe
+      register_tlm_vcd_probe(probe)
+      @_vcd._register_probe(probe)
+    end
 
     def _record_socket_payload(socket, payload)
       return unless payload.is_a?(DeepSveite::Payload)

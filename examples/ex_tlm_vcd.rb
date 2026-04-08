@@ -2,30 +2,37 @@ require_relative "../lib/deepsveite"
 
 DS = DeepSveite
 
-# TLM VCD サンプル: FIFO と Event の波形記録
+# TLM VCD サンプル: FIFO / Event / vcd_signal の波形記録
 #
 # Producer が毎サイクル FIFO に値を書き込み、Consumer が読み出す。
-# FIFO の各スロット（data_fifo[0]〜[4]）と
-# Event のパルス（ev_produced, ev_consumed）が VCD に記録される。
+# - FIFO の各スロット（data_fifo[0]〜[4]）
+# - Event のパルス（ev_produced, ev_consumed）
+# - Producer の内部カウンタ（vcd_signal スカラー）
+# - Consumer の受信ログ配列（vcd_signal 配列）
+# が VCD に記録される。
 
 class Producer < DS::Module
   attr_accessor :fifo_writer, :event_produced
+
+  vcd_signal :total_sent, width: 8   # 送信済み合計（スカラー）
+
   process :run
 
   def initialize
+    @total_sent = 0
     super()
   end
 
   def run
-    # 1サイクルで5アイテムをまとめて書き込む
     5.times do |i|
       @fifo_writer.write((i + 1) * 10)
+      @total_sent += 1
     end
     @event_produced.notify
     wait
-    # さらに3アイテム追加
     3.times do |i|
       @fifo_writer.write((i + 6) * 10)
+      @total_sent += 1
     end
     @event_produced.notify
   end
@@ -33,9 +40,16 @@ end
 
 class Consumer < DS::Module
   attr_accessor :fifo_reader, :event_consumed
+
+  vcd_signal :last_received, width: 8          # 直近の受信値（スカラー）
+  vcd_signal :log,           width: 8, size: 8 # 受信ログ配列
+
   process :run
 
   def initialize
+    @last_received = 0
+    @log = Array.new(8, 0)
+    @log_idx = 0
     super()
   end
 
@@ -43,6 +57,9 @@ class Consumer < DS::Module
     8.times do
       val = @fifo_reader.read
       puts "consumed: #{val}"
+      @last_received     = val
+      @log[@log_idx % 8] = val
+      @log_idx += 1
       @event_consumed.notify
       wait
     end

@@ -22,6 +22,7 @@ module DeepSveite
         _register_tlm_processes(sim, mod)
         _register_fifos(sim, mod)
         _register_events(sim, mod)
+        _register_vcd_signals(sim, mod)
       end
       _recursive_module(sim, mod)
     end
@@ -165,6 +166,28 @@ module DeepSveite
         _set_info_to_instance(value, mod, ivar.to_s[1..])
         sim.register_fifo_collection(value)
         value._vcd_probes.each { |p| sim.register_tlm_vcd_probe(p) }
+      end
+    end
+
+    def _register_vcd_signals(sim, mod)
+      mod.class._pending_vcd_signals.each do |defn|
+        name  = defn[:name]
+        width = defn[:width]
+        size  = defn[:size]
+
+        if size
+          # 配列: build 時に size 本のプローブを静的登録
+          size.times do |i|
+            probe = VCDProbe.new(name: "#{name}[#{i}]", parent: mod, width: width) do
+              arr = mod.instance_variable_get(:"@#{name}")
+              arr.is_a?(Array) && arr[i].is_a?(Integer) ? arr[i] : 0
+            end
+            sim.register_tlm_vcd_probe(probe)
+          end
+        else
+          # スカラー / ハッシュ: 動的モニタとして登録（型は実行時に判定）
+          sim.register_vcd_signal_monitor(mod, name, width)
+        end
       end
     end
 

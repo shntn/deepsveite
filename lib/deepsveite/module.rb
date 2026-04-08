@@ -36,6 +36,15 @@ module DeepSveite
       @_process || []
     end
 
+    def self.vcd_signal(name, width:, size: nil)
+      @_vcd_signals ||= []
+      @_vcd_signals << { name: name, width: width, size: size }
+    end
+
+    def self._pending_vcd_signals
+      @_vcd_signals || []
+    end
+
     def wait
       Fiber.yield(:next_cycle)
     end
