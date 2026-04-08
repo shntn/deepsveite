@@ -51,6 +51,10 @@ module DeepSveite
       end
       @fifo._read
     end
+
+    def has_data?
+      @fifo._ready?
+    end
   end
 
   class FIFOWriter
