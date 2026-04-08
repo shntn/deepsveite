@@ -157,12 +157,14 @@ module DeepSveite
     end
 
     # Wire / Reg には true/false が入ることがある（Ruby 比較式の結果）
+    # Payload など整数変換できないオブジェクトは 0 として扱う
     def _to_int(val)
       case val
-      when true  then 1
-      when false then 0
-      when nil   then 0
-      else val.to_i
+      when true    then 1
+      when false   then 0
+      when nil     then 0
+      when Integer then val
+      else val.respond_to?(:to_i) ? val.to_i : 0
       end
     end
   end
