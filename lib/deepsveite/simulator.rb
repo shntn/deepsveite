@@ -103,7 +103,7 @@ module DeepSveite
           _tlm_cycle
           _tlm_clock_notification
           _vcd_tick
-          break if @_all_tlm_fibers.all? { |f| !f.alive? }
+          break if @_tlm_queue.empty?
         end
       end
     end
