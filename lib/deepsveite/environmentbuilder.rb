@@ -16,7 +16,7 @@ module DeepSveite
       else
         _register_signals_to_simulator(sim, mod)
         _register_signal_arrays(sim, mod)
-        _register_processes_to_wire(mod)
+        _register_processes_to_wire(sim, mod)
         _register_processes_to_reg(sim, mod)
         _register_sockets(sim, mod)
         _register_tlm_processes(sim, mod)
@@ -77,7 +77,7 @@ module DeepSveite
       end
     end
 
-    def _register_processes_to_wire(mod)
+    def _register_processes_to_wire(sim, mod)
       mod.class._pending_combinational.each do |setup|
         method = mod.method(setup[:method])
         reads = setup[:reads] || _collect_signals(mod, type: :input)
@@ -85,6 +85,13 @@ module DeepSveite
         reads.each do |s_name|
           signal = mod.instance_variable_get("@#{s_name}")
           signal._register_destination method
+        end
+
+        writes = setup[:writes] || []
+        writes.each do |s_name|
+          signal = mod.instance_variable_get("@#{s_name}")
+          content = signal._content
+          sim.register_rtl_collections(content) unless content.is_a?(DeepSveite::Reg)
         end
       end
     end
@@ -95,7 +102,7 @@ module DeepSveite
         value = mod.instance_variable_get(ivar)
         next unless _signal?(value)
         if type == :input
-          collection << ivar.to_s[1..].to_sym if value._input && (value.is_a?(DeepSveite::Reg) || value._is_port)
+          collection << ivar.to_s[1..].to_sym if value._input
         elsif type == :output
           collection << ivar.to_s[1..].to_sym if value._output
         end

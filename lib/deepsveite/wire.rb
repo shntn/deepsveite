@@ -94,7 +94,7 @@ module DeepSveite
       unless @_input
         raise "Reg #{@_name} is not an input"
       end
-      val = @_content._pending || 0
+      val = @_content._value || 0
       case selector
       when Integer
         (val >> selector) & 1
@@ -126,7 +126,7 @@ module DeepSveite
       unless @_input
         raise "Wire #{@_name} is not an input"
       end
-      @_content._pending || 0
+      @_content._value || 0
     end
 
     def w=(value)
