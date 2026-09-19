@@ -7,21 +7,23 @@ module DeepSveite
     def initialize(width: 1, size: 1)
       @_width    = width
       @_size     = size
-      @_data     = Array.new(size, 0)   # 即時読み書き用
-      @_elements = Array.new(size) { Wire.new(width: width) }  # VCD 出力用
+      @_elements = Array.new(size) { Wire.new(width: width) }
       @_name     = nil
       @_parent   = nil
     end
 
-    # 即時読み出し
     def [](index)
-      @_data[index]
+      elem = @_elements[index]
+      elem ? elem.w : 0
     end
 
-    # 即時書き込み + Wire 要素に反映（VCD 同期用）
+    # RTL プロセス内は更新イベント経由、プロセス外（初期化 / TLM / TestBench）は即時反映
     def []=(index, value)
-      @_data[index] = value
-      @_elements[index].w = value
+      elem = @_elements.fetch(index)
+      elem.w = value
+      return if DeepSveite.current_process
+      DeepSveite._active_updates.delete(elem)
+      elem._update
     end
 
     def _elements = @_elements

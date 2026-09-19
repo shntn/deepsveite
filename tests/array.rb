@@ -108,7 +108,7 @@ end
 
 class TestArray < Minitest::Test
 
-  # RegArray: 書き込んだ値を次クロックで読み出せる
+  # RegArray: 書き込んだ値を次のクロックで読み出せる
   def test_regarray_write_and_read
     tb  = SyncRAMBench.new
     sim = DeepSveite::Simulator.new(tb, tb.clk)
@@ -117,9 +117,30 @@ class TestArray < Minitest::Test
     tb.we.w    = 1
     tb.waddr.w = 1
     tb.din.w   = 42
-    tb.raddr.w = 1
-    n = 0; sim.run { (n += 1) >= 2 }  # 1 posedge で書き込み & 読み出し
+    n = 0; sim.run { (n += 1) >= 2 }  # 1 posedge で書き込み
 
+    tb.we.w    = 0
+    tb.raddr.w = 1
+    n = 0; sim.run { (n += 1) >= 2 }  # 1 posedge で読み出し
+
+    assert_equal 42, tb.ram.dout.r
+  end
+
+  # RegArray: 同一エッジでの書き込みと読み出しは NBA なので、読み出しは更新前の値
+  def test_regarray_read_during_write_returns_old_value
+    tb  = SyncRAMBench.new
+    sim = DeepSveite::Simulator.new(tb, tb.clk)
+    sim.build
+
+    tb.we.w    = 1
+    tb.waddr.w = 1
+    tb.din.w   = 42
+    tb.raddr.w = 1
+    n = 0; sim.run { (n += 1) >= 2 }  # 1 posedge: 書き込みと読み出しが同時
+    assert_equal 0, tb.ram.dout.r
+
+    tb.din.w = 99
+    n = 0; sim.run { (n += 1) >= 2 }  # 次の posedge: 前回書いた 42 が読める
     assert_equal 42, tb.ram.dout.r
   end
 
@@ -160,8 +181,11 @@ class TestArray < Minitest::Test
     tb.we.w    = 1
     tb.waddr.w = 0
     tb.din.w   = 0xFF
+    n = 0; sim.run { (n += 1) >= 2 }  # 1 posedge: 書き込み
+
+    tb.we.w    = 0
     tb.raddr.w = 0
-    n = 0; sim.run { (n += 1) >= 2 }  # 1 posedge
+    n = 0; sim.run { (n += 1) >= 2 }  # 1 posedge: 読み出し
 
     # posedge 後: NBA により dout が確定
     assert_equal 0xFF, tb.ram.dout.r
@@ -176,6 +200,9 @@ class TestArray < Minitest::Test
     tb.we.w    = 1
     tb.waddr.w = 0
     tb.din.w   = 0x1234
+    n = 0; sim.run { (n += 1) >= 2 }
+
+    tb.we.w    = 0
     tb.raddr.w = 0
     n = 0; sim.run { (n += 1) >= 2 }
 

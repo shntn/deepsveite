@@ -7,21 +7,23 @@ module DeepSveite
     def initialize(width: 1, size: 1)
       @_width    = width
       @_size     = size
-      @_data     = Array.new(size, 0)   # 即時読み書き用（TLM/RTL 共通）
-      @_elements = Array.new(size) { Reg.new(width: width) }  # VCD 出力用
+      @_elements = Array.new(size) { Reg.new(width: width) }
       @_name     = nil
       @_parent   = nil
     end
 
-    # 即時読み出し（TLM / RTL 両対応）
     def [](index)
-      @_data[index]
+      elem = @_elements[index]
+      elem ? elem.r : 0
     end
 
-    # 即時書き込み + Reg 要素に NBA スケジュール（VCD 同期用）
+    # RTL プロセス内は NBA、プロセス外（TLM / TestBench）は即時反映
     def []=(index, value)
-      @_data[index] = value
-      @_elements[index].r = value
+      elem = @_elements.fetch(index)
+      elem.r = value
+      return if DeepSveite.current_process
+      DeepSveite._nba_updates.delete(elem)
+      elem._update
     end
 
     def _elements = @_elements
