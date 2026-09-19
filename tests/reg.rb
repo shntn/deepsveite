@@ -20,7 +20,7 @@ class TestReg < Minitest::Test
 
   # _update を呼ぶと書き込みが確定する
   def test_update_commits_write
-    reg = DeepSveite::Reg.new
+    reg = DeepSveite::Reg.new(width: 8)
     reg.r = 5
     reg._update
     assert_equal 5, reg.r
@@ -71,5 +71,25 @@ class TestReg < Minitest::Test
 
     refute reg.posedge
     refute reg.negedge
+  end
+
+  # 幅を超える値は幅でマスクされる
+  def test_reg_masks_value_to_width
+    reg = DeepSveite::Reg.new(width: 8)
+    reg.r = 0x1FF
+    reg._update
+    assert_equal 0xFF, reg.r
+
+    reg.r = reg.r + 1
+    reg._update
+    assert_equal 0, reg.r
+  end
+
+  # 負数は 2 の補数で保持される
+  def test_reg_masks_negative_value
+    reg = DeepSveite::Reg.new(width: 4)
+    reg.r = -1
+    reg._update
+    assert_equal 0xF, reg.r
   end
 end

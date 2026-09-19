@@ -115,11 +115,11 @@ module DeepSveite
       case selector
       when Integer
         bit = new_val == 0 ? 0 : 1
-        @_content._pending = bit == 0 ? current & ~(1 << selector) : current | (1 << selector)
+        @_content._pending = @_content._mask(bit == 0 ? current & ~(1 << selector) : current | (1 << selector))
       when Range
         lo, hi = selector.min, selector.max
         mask = (1 << (hi - lo + 1)) - 1
-        @_content._pending = (current & ~(mask << lo)) | ((new_val & mask) << lo)
+        @_content._pending = @_content._mask((current & ~(mask << lo)) | ((new_val & mask) << lo))
       end
       DeepSveite._nba_updates.add(@_content)
     end
@@ -136,7 +136,7 @@ module DeepSveite
         raise "Reg #{@_name} is not an output"
       end
       @_content._check_driver(DeepSveite.current_process)
-      @_content._pending = value
+      @_content._pending = @_content._mask(value)
       DeepSveite._nba_updates.add(@_content)
     end
 

@@ -440,7 +440,7 @@ class Sap1 < DeepSveite::Module
     @or_out   = DeepSveite::Wire.new(width: 8)
 
     # bus
-    @bus      = DeepSveite::Wire.new(width: 4)
+    @bus      = DeepSveite::Wire.new(width: 8)
 
     # control signals
     @cp     = DeepSveite::Wire.new

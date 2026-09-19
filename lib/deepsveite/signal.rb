@@ -4,6 +4,14 @@ module DeepSveite
   class Signal
     def initialize; end
 
+    # 書き込み値を幅でマスクする。true/false は 1/0、整数以外はそのまま通す
+    def _mask(value)
+      value = 1 if value == true
+      value = 0 if value == false
+      return value unless value.is_a?(Integer)
+      value & ((1 << @_width) - 1)
+    end
+
     def _register_edge_destination(edge, process)
       if self == @_content
         @_edge_destinations << [edge, process]

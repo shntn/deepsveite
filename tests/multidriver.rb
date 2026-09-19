@@ -110,7 +110,7 @@ class SingleDriverMultiWrite < DeepSveite::Module
 
   def initialize
     @sel = DeepSveite::Wire.new
-    @out = DeepSveite::Wire.new
+    @out = DeepSveite::Wire.new(width: 8)
     super()
   end
 
