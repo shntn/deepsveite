@@ -3,6 +3,8 @@
 Ruby で書かれた軽量な RTL / TLM ハードウェアシミュレーションフレームワークです。
 SystemC / SystemVerilog のエッセンスを参考に、Ruby のシンプルな記述でハードウェア動作をモデリングできます。
 
+API の詳細は [docs/api.md](docs/api.md) を参照してください。
+
 ---
 
 ## 特徴
