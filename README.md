@@ -79,7 +79,7 @@ require_relative "path/to/DeepSveite/lib/deepsveite"
 git clone https://github.com/shntn/DeepSveite.git
 cd DeepSveite
 gem build deepsveite.gemspec
-gem install deepsveite-0.1.0.gem
+gem install deepsveite-0.2.0.gem
 ```
 
 インストール後は `require` だけで使えます。
