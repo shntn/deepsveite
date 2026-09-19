@@ -30,8 +30,10 @@ SystemC / SystemVerilog のエッセンスを参考に、Ruby のシンプルな
 
 使用できる信号:
 
-- **Wire** — 組み合わせ信号。`always_comb` の出力
-- **Reg** — 順序信号。Non-Blocking Assignment（NBA）でクロックエッジに同期して確定
+- **Wire** — 組み合わせ信号。`always_comb` の出力。書き込みは更新イベントとして Active 領域で反映
+- **Reg** — 順序信号。Non-Blocking Assignment（NBA）で、Active 領域が空になった後の NBA 領域で確定
+
+評価イベント（`always_comb` / `always_ff` の実行）と更新イベント（信号値の反映）を Active / NBA の 2 つの領域で処理する、SystemVerilog と同様のスケジューリングです。Reg の更新に反応する `always_comb` も、同じ `sim.step` 内で収束します。
 
 ### TLM シミュレーション
 
@@ -150,8 +152,9 @@ end
 ### Wire / Reg
 
 Wire と Reg はシミュレーション内で使います。
-`w=` / `r=` はノンブロッキング代入（NBA）で、`sim.step` が呼ばれるまで読み値には反映されません。
-TestBench レベルの Wire / Reg は `sim.step` の先頭（PRE-ACTIVE フェーズ）で更新されます。
+`w=` は更新イベント（Active 領域）、`r=` はノンブロッキング代入（NBA 領域）として反映されます。
+どちらも書き込んだ直後は読み値に反映されません（同じプロセス内で書いた直後に読むと、書く前の値が返ります）。
+TestBench レベルの Wire / Reg に `sim.step` の前に設定した値は、そのステップのクロック変化と同時に反映されます。
 
 ```ruby
 class SigBench < DS::TestBench
@@ -172,7 +175,7 @@ sim.build
 puts tb.sig.w   # => 0
 puts tb.reg.r   # => 0
 
-# 書き込み → step で PRE-ACTIVE 更新が走り _value に確定
+# 書き込み → step で更新イベントが反映され値が確定
 tb.sig.w = 0xFF
 sim.step
 puts tb.sig.w   # => 255
@@ -215,7 +218,9 @@ mod.dout = wire.out  # 出力ポート（読み出し不可）
 ### RegArray
 
 複数要素を持つ順序信号の配列です。シンクロナス RAM やレジスタファイルのモデルに使います。
-`[]` / `[]=` で即時読み書きができ、VCD には `mem[0]`, `mem[1]` ... として出力されます。
+`always_ff` などの RTL プロセス内での `[]=` はノンブロッキング代入（NBA）で、同じクロックエッジで読み出すと更新前の値が返ります。
+`process`（TLM）・TestBench・`initialize` など RTL プロセス外での `[]=` は即時に反映されます。
+VCD には `mem[0]`, `mem[1]` ... として出力されます。
 
 ```ruby
 class SyncRAM < DS::Module
@@ -239,7 +244,7 @@ class SyncRAM < DS::Module
   end
 end
 
-# TestBench レベルで Wire を定義してポート接続する（_update_pre_active の対象になる）
+# TestBench レベルで Wire を定義してポート接続する
 class RAMBench < DS::TestBench
   attr_reader :clk, :we, :addr, :din, :ram
 
@@ -472,6 +477,8 @@ ruby tests/fifo.rb
 ruby tests/event.rb
 ruby tests/vcd.rb
 ruby tests/array.rb
+ruby tests/multidriver.rb
+ruby tests/scheduler.rb
 ```
 
 ---
@@ -482,14 +489,19 @@ ruby tests/array.rb
 
 ```
 sim.step の実行順序:
-  1. クロックトグル
-  2. _update_pre_active      ← TestBench 信号の反映（PRE-ACTIVE リージョン）
-  3. _rtl_cycle              ← always_comb / always_ff + デルタサイクル収束
-  4. _tlm_cycle              ← TLM process の Fiber 再開（negedge）
-  5. _clock_notification_phase
-       ├─ Reg NBA            ← posedge 時のみ Reg._value を確定
+  1. クロックトグル            ← TestBench で設定した信号とともに更新イベントとして登録
+  2. _rtl_cycle
+       ├─ Active 領域        ← 更新イベントを反映 → 感度のある評価イベント
+       │                       （always_comb / always_ff）を実行、空になるまで繰り返し
+       ├─ NBA 領域           ← Reg の更新を反映 → 感度のある評価イベントを Active へ
+       └─ Active / NBA が両方空になるまで繰り返し、多重ドライバを検査
+  3. _tlm_cycle                ← TLM process の Fiber 再開（negedge）
+  4. _clock_notification_phase
        └─ TLM クロック通知   ← posedge 時のみ pending Fiber を tlm_queue へ
 ```
+
+Wire の `w=` は Active の更新イベント、Reg の `r=` は NBA の更新イベントとして登録されます。
+エッジ（`posedge` / `negedge`）は信号の値が変化した更新イベントの時点で判定し、該当する `always_ff` を評価イベントとして登録します。
 
 ### ファイル構成
 

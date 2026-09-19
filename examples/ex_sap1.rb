@@ -236,27 +236,27 @@ class ControllerSequencer < DeepSveite::Module
     # 制御信号
     @cp.w = @t.r == 1
     @ep.w = @t.r == 0
-    @n_lm.w = !(    (@t.r == 0)
-                 || (@t.r == 3 && @inst_lda.w != 0)
-                 || (@t.r == 3 && @inst_add.w != 0)
-                 || (@t.r == 3 && @inst_sub.w != 0))
-    @n_ce.w = !(    (@t.r == 2)
-                 || (@t.r == 4 && @inst_lda.w != 0)
-                 || (@t.r == 4 && @inst_add.w != 0)
-                 || (@t.r == 4 && @inst_sub.w != 0))
+    @n_lm.w = !(    (@t.r == 0) ||
+                    (@t.r == 3 && @inst_lda.w != 0) ||
+                    (@t.r == 3 && @inst_add.w != 0) ||
+                    (@t.r == 3 && @inst_sub.w != 0))
+    @n_ce.w = !(    (@t.r == 2) ||
+                    (@t.r == 4 && @inst_lda.w != 0) ||
+                    (@t.r == 4 && @inst_add.w != 0) ||
+                    (@t.r == 4 && @inst_sub.w != 0))
     @n_li.w = !(@t.r == 2)
-    @n_ei.w = !(    (@t.r == 3 && @inst_lda.w != 0)
-                 || (@t.r == 3 && @inst_add.w != 0)
-                 || (@t.r == 3 && @inst_sub.w != 0))
-    @n_la.w = !(    (@t.r == 4 && @inst_lda.w != 0)
-                 || (@t.r == 5 && @inst_add.w != 0)
-                 || (@t.r == 5 && @inst_sub.w != 0))
+    @n_ei.w = !(    (@t.r == 3 && @inst_lda.w != 0) ||
+                    (@t.r == 3 && @inst_add.w != 0) ||
+                    (@t.r == 3 && @inst_sub.w != 0))
+    @n_la.w = !(    (@t.r == 4 && @inst_lda.w != 0) ||
+                    (@t.r == 5 && @inst_add.w != 0) ||
+                    (@t.r == 5 && @inst_sub.w != 0))
     @ea.w = (@t.r == 3) && @inst_out.w != 0
     @su.w = (@t.r == 5) && @inst_sub.w != 0
-    @eu.w = (    (@t.r == 5 && @inst_add.w != 0)
-              || (@t.r == 5 && @inst_sub.w != 0))
-    @n_lb.w = !(    (@t.r == 4 && @inst_add.w != 0)
-                 || (@t.r == 4 && @inst_sub.w != 0))
+    @eu.w = (    (@t.r == 5 && @inst_add.w != 0) ||
+                 (@t.r == 5 && @inst_sub.w != 0))
+    @n_lb.w = !(    (@t.r == 4 && @inst_add.w != 0) ||
+                    (@t.r == 4 && @inst_sub.w != 0))
     @n_lo.w = !(@t.r == 3 && @inst_out.w != 0)
   end
 end
