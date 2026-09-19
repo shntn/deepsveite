@@ -80,6 +80,7 @@ module DeepSveite
     def _register_processes_to_wire(sim, mod)
       mod.class._pending_combinational.each do |setup|
         method = mod.method(setup[:method])
+        sim.register_comb_process(method)
         reads = setup[:reads] || _collect_signals(mod, type: :input)
 
         reads.each do |s_name|

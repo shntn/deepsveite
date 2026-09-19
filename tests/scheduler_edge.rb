@@ -87,6 +87,46 @@ class EdgeGated < DeepSveite::Module
   def bump = @count.r = @count.r + 1
 end
 
+# 定数を出力する always_comb と、それを posedge で取り込む always_ff
+class EdgeConstLatch < DeepSveite::Module
+  attr_accessor :clk
+  attr_reader :k, :q
+  always_comb :drive
+  always_ff   :latch, cond: [:clk.posedge]
+
+  def initialize
+    @k = DeepSveite::Wire.new(width: 8)
+    @q = DeepSveite::Reg.new(width: 8)
+    super()
+  end
+
+  def drive = @k.w = 5
+  def latch = @q.r = @k.w
+end
+
+# 初期値を持つ入力から計算する always_comb
+class EdgeInitInput < DeepSveite::Module
+  attr_accessor :a
+  attr_reader :y
+  always_comb :calc
+
+  def initialize
+    @y = DeepSveite::Wire.new(width: 8)
+    super()
+  end
+
+  def calc = @y.w = @a.w + 1
+end
+
+# 何も読まず、.out ポートにだけ書く always_comb
+class EdgeOutOnly < DeepSveite::Module
+  attr_accessor :y
+
+  always_comb :drive
+
+  def drive = @y.w = 7
+end
+
 # reads: 省略時に、Module 内の Wire を経由した多段の伝播が収束する
 class EdgeAutoChain < DeepSveite::Module
   attr_accessor :a
@@ -220,6 +260,41 @@ class EdgeCountingBench < DeepSveite::TestBench
   end
 end
 
+class EdgeConstLatchBench < DeepSveite::TestBench
+  attr_reader :clk, :dut
+
+  def initialize
+    super()
+    @clk = DeepSveite::Wire.new
+    @dut = EdgeConstLatch.new
+    @dut.clk = @clk.in
+  end
+end
+
+class EdgeInitInputBench < DeepSveite::TestBench
+  attr_reader :clk, :dut
+
+  def initialize
+    super()
+    @clk = DeepSveite::Wire.new
+    @a   = DeepSveite::Wire.new(init: 3, width: 8)
+    @dut = EdgeInitInput.new
+    @dut.a = @a.in
+  end
+end
+
+class EdgeOutOnlyBench < DeepSveite::TestBench
+  attr_reader :clk, :y, :dut
+
+  def initialize
+    super()
+    @clk = DeepSveite::Wire.new
+    @y   = DeepSveite::Wire.new(width: 8)
+    @dut = EdgeOutOnly.new
+    @dut.y = @y.out
+  end
+end
+
 class TestSchedulerEdge < Minitest::Test
 
   def build(tb, clock = tb.clk)
@@ -251,10 +326,10 @@ class TestSchedulerEdge < Minitest::Test
 
   # 収束しない組み合わせループは無限ループとして検出される
   def test_combinational_loop_is_detected
-    tb  = EdgeSingleBench.new(EdgeLoop.new)
-    sim = build(tb)
+    tb = EdgeSingleBench.new(EdgeLoop.new)
 
-    err = assert_raises(RuntimeError) { sim.step }
+    # 時刻 0 の always_comb 評価で、build 時に検出される
+    err = assert_raises(RuntimeError) { build(tb) }
     assert_match(/Infinite loop detected/, err.message)
   end
 
@@ -284,12 +359,12 @@ class TestSchedulerEdge < Minitest::Test
     assert_equal 1, tb.dut.count.r
   end
 
-  # 入力を読まない always_comb も、最初の step で評価される
-  def test_constant_comb_is_evaluated_at_first_step
+  # 入力を読まない always_comb の出力は、step しても保たれる
+  def test_constant_comb_output_is_kept_after_step
     tb  = EdgeSingleBench.new(EdgeConst.new)
     sim = build(tb)
 
-    assert_equal 0, tb.dut.out.w
+    assert_equal 5, tb.dut.out.w
     sim.step
     assert_equal 5, tb.dut.out.w
   end
@@ -315,6 +390,41 @@ class TestSchedulerEdge < Minitest::Test
     assert_equal 2, tb.dut.count.r
   end
 
+  # ---- 時刻 0 の always_comb ----
+
+  # always_comb は build の時点（時刻 0）で評価され、出力が入力と整合している
+  def test_comb_is_evaluated_at_time_zero
+    tb  = EdgeSingleBench.new(EdgeConst.new)
+    build(tb)
+
+    assert_equal 5, tb.dut.out.w
+  end
+
+  # 初期値を持つ入力から計算する always_comb も、build の時点で評価される
+  def test_comb_uses_initial_input_at_time_zero
+    tb = EdgeInitInputBench.new
+    build(tb)
+
+    assert_equal 4, tb.dut.y.w
+  end
+
+  # 何も読まず .out ポートにだけ書く always_comb も、build の時点で評価される
+  def test_output_only_comb_is_evaluated_at_time_zero
+    tb = EdgeOutOnlyBench.new
+    build(tb)
+
+    assert_equal 7, tb.y.w
+  end
+
+  # 最初の posedge で、always_ff は always_comb の初期評価済みの出力を取り込む
+  def test_ff_at_first_posedge_sees_settled_comb_output
+    tb  = EdgeConstLatchBench.new
+    sim = build(tb)
+
+    sim.step  # 最初の posedge
+    assert_equal 5, tb.dut.q.r
+  end
+
   # ---- 4. reads: 省略時の自動収集 ----
 
   # Module 内で定義した Wire も自動収集され、多段の伝播が収束する
@@ -335,11 +445,12 @@ class TestSchedulerEdge < Minitest::Test
   def test_out_port_is_not_collected
     tb  = EdgeCountingBench.new
     sim = build(tb)
+    assert_equal 1, tb.dut.evals   # 時刻 0 の評価
 
     tb.a.w = 3
     sim.step
     assert_equal 4, tb.y.w
-    assert_equal 1, tb.dut.evals
+    assert_equal 2, tb.dut.evals   # 入力の変化による 1 回だけ（自分の出力では再評価されない）
   end
 
   # .out ポートは読み出せない
@@ -355,6 +466,7 @@ class TestSchedulerEdge < Minitest::Test
   def test_stale_update_before_build_does_not_leak
     tb1 = EdgeCountingBench.new
     build(tb1)
+    evals_after_build = tb1.dut.evals
     tb1.a.w = 3   # 更新イベントが登録されるが、tb1 は step しない
 
     tb2  = EdgeCountingBench.new
@@ -362,7 +474,7 @@ class TestSchedulerEdge < Minitest::Test
     tb2.a.w = 1
     sim2.step
 
-    assert_equal 0, tb1.dut.evals
+    assert_equal evals_after_build, tb1.dut.evals
     assert_equal 2, tb2.y.w
   end
 
@@ -385,8 +497,7 @@ class TestSchedulerEdge < Minitest::Test
   # 例外で途中終了した後でも、新しいシミュレータは正常に動く
   def test_new_simulator_works_after_an_error
     tb1 = EdgeSingleBench.new(EdgeLoop.new)
-    sim1 = build(tb1)
-    assert_raises(RuntimeError) { sim1.step }
+    assert_raises(RuntimeError) { build(tb1) }
     assert_nil DeepSveite.current_process
 
     tb2  = EdgeAutoChainBench.new

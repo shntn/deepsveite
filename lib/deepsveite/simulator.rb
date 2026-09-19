@@ -9,6 +9,7 @@ module DeepSveite
       @_rtl_collections = []
       @_reg_collections = []
       @_rtl_eval_queue = []
+      @_comb_processes = []
       @_tlm_queue = []
       @_pending_tlm_fibers = []
       @_all_tlm_fibers = []
@@ -23,6 +24,11 @@ module DeepSveite
     def build
       @eb.build(self, @tb)
       _settle_initial_values
+      _evaluate_comb_at_time_zero
+    end
+
+    def register_comb_process(method)
+      @_comb_processes << method
     end
 
     def register_pre_active_collections(signals)
@@ -186,6 +192,13 @@ module DeepSveite
       DeepSveite._active_updates.clear
       DeepSveite._nba_updates.clear
       DeepSveite._pending_evals.clear
+    end
+
+    # SystemVerilog の always_comb と同様に、時刻 0 で全 always_comb を 1 回評価して収束させる
+    def _evaluate_comb_at_time_zero
+      @_rtl_eval_queue |= @_comb_processes
+      _clear_all_writers
+      _rtl_cycle
     end
 
     # Active 領域: 更新イベントを反映して評価イベントを実行し、両方が空になるまで繰り返す

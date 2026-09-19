@@ -140,12 +140,9 @@ class TestMultiDriver < Minitest::Test
   def test_multiple_comb_drivers_raises
     tb  = MultiCombBench.new
     sim = DeepSveite::Simulator.new(tb, tb.clk)
-    sim.build
 
-    assert_raises(RuntimeError) do
-      tb.trigger.w = 1
-      sim.step
-    end
+    # 時刻 0 の always_comb 評価で、build 時に検出される
+    assert_raises(RuntimeError) { sim.build }
   end
 
   # 異なる always_ff プロセスが同一 Reg に書く → RuntimeError
@@ -187,12 +184,8 @@ class TestMultiDriver < Minitest::Test
   def test_error_message_contains_signal_and_process_names
     tb  = MultiCombBench.new
     sim = DeepSveite::Simulator.new(tb, tb.clk)
-    sim.build
 
-    err = assert_raises(RuntimeError) do
-      tb.trigger.w = 1
-      sim.step
-    end
+    err = assert_raises(RuntimeError) { sim.build }
 
     assert_includes err.message, "shared_out"
     assert_includes err.message, "DriverA#drive"

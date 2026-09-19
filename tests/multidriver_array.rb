@@ -75,10 +75,8 @@ class TestMultiDriverArray < Minitest::Test
 
   # 別のプロセスが WireArray の同じ要素に書くと多重ドライバ
   def test_two_comb_processes_writing_same_wirearray_element_raise
-    tb, sim = build(MdArrayComb.new(0))
-
-    tb.trigger.w = 1
-    err = assert_raises(RuntimeError) { sim.step }
+    # 時刻 0 の always_comb 評価で、build 時に検出される
+    err = assert_raises(RuntimeError) { build(MdArrayComb.new(0)) }
     assert_includes err.message, "tbl[0]"
     assert_includes err.message, "MdArrayComb#drive_a"
     assert_includes err.message, "MdArrayComb#drive_b"
