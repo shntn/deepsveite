@@ -252,6 +252,19 @@ class TestArray < Minitest::Test
     assert_equal [100, 200, 300], store.log
   end
 
+  # 範囲外インデックスの読み書きは IndexError
+  def test_out_of_range_index_raises
+    reg_array  = DeepSveite::RegArray.new(width: 8, size: 4)
+    wire_array = DeepSveite::WireArray.new(width: 8, size: 4)
+
+    [reg_array, wire_array].each do |arr|
+      assert_raises(IndexError) { arr[4] }
+      assert_raises(IndexError) { arr[-1] }
+      assert_raises(IndexError) { arr[4] = 1 }
+      assert_raises(IndexError) { arr[-1] = 1 }
+    end
+  end
+
   # VCD: RegArray の要素が "name[i]" 形式で出力される
   def test_regarray_appears_in_vcd
     tb  = SyncRAMBench.new

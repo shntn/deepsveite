@@ -273,7 +273,7 @@ DeepSveite 固有の相違点:
 
 * `[index] -> val`
 
-  index 番目の要素の値を返す。
+  index 番目の要素の値を返す。範囲外の index（負数を含む）は `IndexError` になる。
 
   ```
   lut = WireArray.new(width: 8, size: 4)
@@ -304,7 +304,7 @@ DeepSveite 固有の相違点:
 
 * `[index] -> val`
 
-  index 番目の要素の値を返す。
+  index 番目の要素の値を返す。範囲外の index（負数を含む）は `IndexError` になる。
 
   ```
   mem = RegArray.new(width: 8, size: 4)

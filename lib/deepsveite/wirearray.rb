@@ -13,13 +13,12 @@ module DeepSveite
     end
 
     def [](index)
-      elem = @_elements[index]
-      elem ? elem.w : 0
+      _element(index).w
     end
 
     # RTL プロセス内は更新イベント経由、プロセス外（初期化 / TLM / TestBench）は即時反映
     def []=(index, value)
-      elem = @_elements.fetch(index)
+      elem = _element(index)
       elem.w = value
       return if DeepSveite.current_process
       DeepSveite._active_updates.delete(elem)
@@ -27,5 +26,14 @@ module DeepSveite
     end
 
     def _elements = @_elements
+
+    private
+
+    def _element(index)
+      unless index.is_a?(Integer) && index.between?(0, @_size - 1)
+        raise IndexError, "index #{index} out of range (size #{@_size}) in #{@_name || self.class}"
+      end
+      @_elements[index]
+    end
   end
 end
