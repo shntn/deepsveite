@@ -211,6 +211,29 @@
   lut[2] = 0xAB
   ```
 
+* `[index, nth] -> val` / `[index, range] -> val`
+
+  index 番目の要素の nth 番目のビット、または Range 範囲のビットを返す。
+
+  ```
+  lut = WireArray.new(width: 8, size: 4)
+  lut[0] = 0x55
+  lut[0, 2]       # => 1
+  lut[0, 4..7]    # => 5
+  ```
+
+* `[index, nth] = val` / `[index, range] = val`
+
+  index 番目の要素の nth 番目のビット、または Range 範囲のビットに値を設定する（他のビットは保持）。
+  書き込みのタイミングは `[index] = val` と同じ。
+
+  ```
+  lut = WireArray.new(width: 8, size: 4)
+  lut[0] = 0x50
+  lut[0, 1] = 1        # lut[0] == 0x52
+  lut[0, 0..3] = 0xF   # lut[0] == 0x5F
+  ```
+
 ## RegArray
 
 * `new(width: 1, size: 1) -> RegArray`
@@ -240,6 +263,29 @@
   ```
   mem = RegArray.new(width: 8, size: 4)
   mem[3] = 0xFF
+  ```
+
+* `[index, nth] -> val` / `[index, range] -> val`
+
+  index 番目の要素の nth 番目のビット、または Range 範囲のビットを返す。
+
+  ```
+  mem = RegArray.new(width: 8, size: 4)
+  mem[0] = 0x55
+  mem[0, 2]       # => 1
+  mem[0, 4..7]    # => 5
+  ```
+
+* `[index, nth] = val` / `[index, range] = val`
+
+  index 番目の要素の nth 番目のビット、または Range 範囲のビットに値を設定する（他のビットは保持）。
+  書き込みのタイミングは `[index] = val` と同じ。
+
+  ```
+  mem = RegArray.new(width: 8, size: 4)
+  mem[0] = 0x50
+  mem[0, 1] = 1        # mem[0] == 0x52
+  mem[0, 0..3] = 0xF   # mem[0] == 0x5F
   ```
 
 ## Socket

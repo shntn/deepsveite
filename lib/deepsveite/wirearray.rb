@@ -12,14 +12,22 @@ module DeepSveite
       @_parent   = nil
     end
 
-    def [](index)
-      _element(index).w
+    # selector に Integer（ビット）か Range（ビット範囲）を渡すと、そのビットだけを読む
+    def [](index, selector = nil)
+      elem = _element(index)
+      selector.nil? ? elem.w : elem[_check_selector(selector)]
     end
 
     # RTL プロセス内は更新イベント経由、プロセス外（初期化 / TLM / TestBench）は即時反映
-    def []=(index, value)
+    def []=(index, *args)
+      raise ArgumentError, "wrong number of arguments (given #{args.size + 1}, expected 2..3)" unless args.size.between?(1, 2)
+      selector, value = args.size == 2 ? args : [nil, args.first]
       elem = _element(index)
-      elem.w = value
+      if selector.nil?
+        elem.w = value
+      else
+        elem[_check_selector(selector)] = value
+      end
       return if DeepSveite.current_process
       DeepSveite._active_updates.delete(elem)
       DeepSveite._pending_evals.merge(elem._update)
@@ -35,6 +43,11 @@ module DeepSveite
     def _elements = @_elements
 
     private
+
+    def _check_selector(selector)
+      return selector if selector.is_a?(Integer) || selector.is_a?(Range)
+      raise ArgumentError, "bit selector must be an Integer or a Range (given #{selector.inspect})"
+    end
 
     def _element(index)
       unless index.is_a?(Integer) && index.between?(0, @_size - 1)

@@ -222,6 +222,7 @@ mod.dout = wire.out  # 出力ポート（読み出し不可）
 `always_ff` などの RTL プロセス内での `[]=` はノンブロッキング代入（NBA）で、同じクロックエッジで読み出すと更新前の値が返ります。
 `process`（TLM）・TestBench・`initialize` など RTL プロセス外での `[]=` は即時に反映されます。
 VCD には `mem[0]`, `mem[1]` ... として出力されます。
+ビットセレクトは、インデックスの後ろにビット位置または範囲を渡します（`mem[i, 3]`、`mem[i, 0..3] = 0xF`）。WireArray でも同じです。
 
 ```ruby
 class SyncRAM < DS::Module
