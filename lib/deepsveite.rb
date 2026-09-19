@@ -11,7 +11,6 @@ require_relative "deepsveite/vcdprobe"
 require_relative "deepsveite/payload"
 require_relative "deepsveite/signal"
 require_relative "deepsveite/conditiondescriptor"
-require_relative "deepsveite/edgetrigger"
 require_relative "deepsveite/module"
 require_relative "deepsveite/wire"
 require_relative "deepsveite/reg"
@@ -29,7 +28,9 @@ require_relative "deepsveite/vcd"
 module DeepSveite
   @current_process = nil
   @_process_written_signals = {}
+  @_active_updates = Set.new
+  @_nba_updates = Set.new
   class << self
-    attr_accessor :current_process, :_process_written_signals
+    attr_accessor :current_process, :_process_written_signals, :_active_updates, :_nba_updates
   end
 end

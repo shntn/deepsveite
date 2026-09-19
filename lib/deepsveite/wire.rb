@@ -11,6 +11,7 @@ module DeepSveite
       @_name = nil
       @_parent = nil
       @_register_destination = []
+      @_edge_destinations = []
       @_content = self
       @_input = true
       @_output = true
@@ -120,6 +121,7 @@ module DeepSveite
         mask = (1 << (hi - lo + 1)) - 1
         @_content._pending = (current & ~(mask << lo)) | ((new_val & mask) << lo)
       end
+      DeepSveite._active_updates.add(@_content)
     end
 
     def w
@@ -135,16 +137,14 @@ module DeepSveite
       end
       @_content._check_driver(DeepSveite.current_process)
       @_content._pending = value
+      DeepSveite._active_updates.add(@_content)
     end
 
     def _update
       @_old = @_value
-      if @_value != @_pending
-        @_value = @_pending
-        @_register_destination
-      else
-        []
-      end
+      return [] if @_value == @_pending
+      @_value = @_pending
+      @_register_destination + _edge_methods
     end
 
     private

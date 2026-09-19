@@ -6,12 +6,9 @@ module DeepSveite
       @tb = test_bench
       @eb = DeepSveite::EnvironmentBuilder.new
       @_clock = clock || DeepSveite::Wire.new
-      @_pre_active_collections = []
-      @_rtl_conditions = []
       @_rtl_collections = []
       @_reg_collections = []
       @_rtl_eval_queue = []
-      @_pending_rtl_methods = []
       @_tlm_queue = []
       @_pending_tlm_fibers = []
       @_all_tlm_fibers = []
@@ -25,18 +22,11 @@ module DeepSveite
 
     def build
       @eb.build(self, @tb)
-      _rtl_update
-      _clock_notification_phase
+      _settle_initial_values
     end
 
     def register_pre_active_collections(signals)
-      @_pre_active_collections |= signals
       @_rtl_collections |= signals
-    end
-
-    def register_rtl_condition(edge_trigger)
-      @_rtl_conditions ||= []
-      @_rtl_conditions << edge_trigger
     end
 
     def register_rtl_collections(signal)
@@ -112,7 +102,6 @@ module DeepSveite
       @_step_count += 1
       @_clock.w = @_clock.w == 1 ? 0 : 1
       _clear_all_writers
-      _update_pre_active
       _rtl_cycle
       _tlm_cycle
       _clock_notification_phase
@@ -120,9 +109,12 @@ module DeepSveite
     end
 
     def _rtl_cycle
-      _evaluate_conditions
-      _flush_pending_rtl_methods
-      _run_delta_cycles
+      counts = { delta: 0, process: Hash.new(0) }
+      loop do
+        _run_active_region(counts)
+        break if DeepSveite._nba_updates.empty?
+        _run_nba_region
+      end
       _check_rtl_multiple_drivers
     end
 
@@ -187,17 +179,34 @@ module DeepSveite
       DeepSveite._process_written_signals.clear
     end
 
-    def _run_delta_cycles
-      delta_cycles = 0
-      process_counts = Hash.new(0)
-
-      loop do
-        delta_cycles += 1
-        _check_delta_cycles(delta_cycles)
-        _execute_eval_queue(process_counts)
-        _rtl_update
-        break unless @_rtl_eval_queue.any?
+    def _settle_initial_values
+      (@_rtl_collections + @_reg_collections).each do |signal|
+        @_rtl_eval_queue |= signal._update
       end
+      DeepSveite._active_updates.clear
+      DeepSveite._nba_updates.clear
+    end
+
+    # Active 領域: 更新イベントを反映して評価イベントを実行し、両方が空になるまで繰り返す
+    def _run_active_region(counts)
+      loop do
+        _apply_updates(DeepSveite._active_updates)
+        break if @_rtl_eval_queue.empty?
+        counts[:delta] += 1
+        _check_delta_cycles(counts[:delta])
+        _execute_eval_queue(counts[:process])
+      end
+    end
+
+    # NBA 領域: Reg の更新イベントを反映し、感度のある評価イベントを Active に積む
+    def _run_nba_region
+      _apply_updates(DeepSveite._nba_updates)
+    end
+
+    def _apply_updates(updates)
+      signals = updates.to_a
+      updates.clear
+      signals.each { |signal| @_rtl_eval_queue |= signal._update }
     end
 
     def _check_delta_cycles(delta_cycles)
@@ -208,6 +217,7 @@ module DeepSveite
 
     def _execute_eval_queue(process_counts)
       queue = @_rtl_eval_queue.dup
+      @_rtl_eval_queue.clear
       queue.each do |method|
         _check_process_execution_limit(method, process_counts)
         _clear_process_written_signals(method)
@@ -249,27 +259,6 @@ module DeepSveite
       end
     end
 
-    def _evaluate_conditions
-      @_rtl_conditions.each do |trigger|
-        @_rtl_eval_queue << trigger.method if trigger.met?
-      end
-    end
-
-    def _rtl_update
-      @_rtl_eval_queue.clear
-      @_rtl_collections.each do |signal|
-        methods = signal._update
-        @_rtl_eval_queue |= methods
-      end
-    end
-
-    def _update_pre_active
-      @_pre_active_collections.each do |signal|
-        methods = signal._update
-        @_rtl_eval_queue |= methods
-      end
-    end
-
     def _tlm_cycle
       until @_tlm_queue.empty?
         queue = @_tlm_queue.dup
@@ -279,11 +268,6 @@ module DeepSveite
           _handle_tlm_fiber(fiber, result) if fiber.alive?
         end
       end
-    end
-
-    def _flush_pending_rtl_methods
-      @_rtl_eval_queue |= @_pending_rtl_methods
-      @_pending_rtl_methods.clear
     end
 
     def _handle_tlm_fiber(fiber, result)
@@ -301,9 +285,6 @@ module DeepSveite
     end
 
     def _clock_notification_phase
-      @_reg_collections.each do |reg|
-        @_pending_rtl_methods |= reg._update
-      end
       _tlm_clock_notification if @_clock.w == 1
     end
   end

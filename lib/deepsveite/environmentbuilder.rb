@@ -204,8 +204,7 @@ module DeepSveite
 
         setup[:cond].each do |cond|
           signal = mod.instance_variable_get("@#{cond.name}")
-          edge_trigger = EdgeTrigger.new(signal._content, cond.edge, method)
-          sim.register_rtl_condition(edge_trigger)
+          signal._register_edge_destination(cond.edge, method)
         end
       end
     end
