@@ -30,7 +30,8 @@ module DeepSveite
   @_process_written_signals = {}
   @_active_updates = Set.new
   @_nba_updates = Set.new
+  @_pending_evals = Set.new
   class << self
-    attr_accessor :current_process, :_process_written_signals, :_active_updates, :_nba_updates
+    attr_accessor :current_process, :_process_written_signals, :_active_updates, :_nba_updates, :_pending_evals
   end
 end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-SIGNAL_CLASSES = [DeepSveite::Wire, DeepSveite::Reg]
+SIGNAL_CLASSES = [DeepSveite::Wire, DeepSveite::Reg, DeepSveite::WireArray, DeepSveite::RegArray]
 
 module DeepSveite
   class EnvironmentBuilder

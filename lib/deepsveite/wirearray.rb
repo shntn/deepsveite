@@ -22,7 +22,14 @@ module DeepSveite
       elem.w = value
       return if DeepSveite.current_process
       DeepSveite._active_updates.delete(elem)
-      elem._update
+      DeepSveite._pending_evals.merge(elem._update)
+    end
+
+    def _input  = true
+    def _output = true
+
+    def _register_destination(process)
+      @_elements.each { |elem| elem._register_destination(process) }
     end
 
     def _elements = @_elements

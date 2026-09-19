@@ -68,6 +68,87 @@ class ShiftRegBench < DeepSveite::TestBench
   end
 end
 
+# always_comb が WireArray の要素を書き、別の always_comb がそれを読む（reads: 省略）
+class WireArrayChain < DeepSveite::Module
+  attr_accessor :a
+  attr_reader :out
+  always_comb :fill
+  always_comb :read_back
+
+  def initialize
+    @tbl = DeepSveite::WireArray.new(width: 8, size: 2)
+    @a   = DeepSveite::Wire.new(width: 8)
+    @out = DeepSveite::Wire.new(width: 8)
+    super()
+  end
+
+  def fill      = @tbl[0] = @a.w + 1
+  def read_back = @out.w = @tbl[0] * 2
+end
+
+# RegArray を書く always_ff と、非同期に読む always_comb（レジスタファイル）
+class RegFile < DeepSveite::Module
+  attr_accessor :clk, :we, :waddr, :din, :raddr
+  attr_reader :rdata
+  always_ff   :write, cond: [:clk.posedge]
+  always_comb :read
+
+  def initialize
+    @regs  = DeepSveite::RegArray.new(width: 8, size: 4)
+    @clk   = DeepSveite::Wire.new
+    @we    = DeepSveite::Wire.new
+    @waddr = DeepSveite::Wire.new(width: 2)
+    @din   = DeepSveite::Wire.new(width: 8)
+    @raddr = DeepSveite::Wire.new(width: 2)
+    @rdata = DeepSveite::Wire.new(width: 8)
+    super()
+  end
+
+  def write = (@regs[@waddr.w] = @din.w if @we.w == 1)
+  def read  = @rdata.w = @regs[@raddr.w]
+end
+
+# TestBench から WireArray を書き換え、それを読む always_comb
+class ExternalTable < DeepSveite::Module
+  attr_accessor :sel
+  attr_reader :out, :table
+  always_comb :lookup
+
+  def initialize
+    @table = DeepSveite::WireArray.new(width: 8, size: 4)
+    @sel   = DeepSveite::Wire.new(width: 2)
+    @out   = DeepSveite::Wire.new(width: 8)
+    super()
+  end
+
+  def lookup = @out.w = @table[@sel.w]
+end
+
+class ArraySensitivityBench < DeepSveite::TestBench
+  attr_reader :clk, :a, :chain, :rf_clk, :rf, :sel, :ext
+
+  def initialize
+    super()
+    @clk = DeepSveite::Wire.new
+    @a   = DeepSveite::Wire.new(width: 8)
+    @chain = WireArrayChain.new
+    @chain.a = @a.in
+
+    @rf = RegFile.new
+    @rf.clk   = @clk.in
+    @rf.we    = (@we    = DeepSveite::Wire.new).in
+    @rf.waddr = (@waddr = DeepSveite::Wire.new(width: 2)).in
+    @rf.din   = (@din   = DeepSveite::Wire.new(width: 8)).in
+    @rf.raddr = (@raddr = DeepSveite::Wire.new(width: 2)).in
+
+    @sel = DeepSveite::Wire.new(width: 2)
+    @ext = ExternalTable.new
+    @ext.sel = @sel.in
+  end
+
+  attr_reader :we, :waddr, :din, :raddr
+end
+
 class TestScheduler < Minitest::Test
 
   # Reg の更新に反応する組み合わせ回路は、同じ step 内で収束する
@@ -104,5 +185,46 @@ class TestScheduler < Minitest::Test
     sim.step  # posedge
     assert_equal 9, tb.dut.q1.r
     assert_equal 7, tb.dut.q2.r
+  end
+
+  # always_comb が書いた WireArray の要素を、別の always_comb が読んで再評価される
+  def test_comb_reads_wirearray_written_by_another_comb
+    tb  = ArraySensitivityBench.new
+    sim = DeepSveite::Simulator.new(tb, tb.clk)
+    sim.build
+
+    tb.a.w = 4
+    sim.step
+    assert_equal 10, tb.chain.out.w   # (4 + 1) * 2
+
+    tb.a.w = 9
+    sim.step
+    assert_equal 20, tb.chain.out.w   # (9 + 1) * 2
+  end
+
+  # RegArray の更新に反応して、非同期読み出しの always_comb が同じ step で再評価される
+  def test_comb_reads_regarray_after_ff_write
+    tb  = ArraySensitivityBench.new
+    sim = DeepSveite::Simulator.new(tb, tb.clk)
+    sim.build
+
+    tb.we.w = 1; tb.waddr.w = 2; tb.din.w = 77; tb.raddr.w = 2
+    sim.step  # posedge: regs[2] <= 77 (NBA) → rdata が同じ step で 77 になる
+    assert_equal 77, tb.rf.rdata.w
+  end
+
+  # TestBench（RTL プロセス外）が WireArray を書き換えると、次の step で always_comb が再評価される
+  def test_comb_reevaluated_when_testbench_writes_wirearray
+    tb  = ArraySensitivityBench.new
+    sim = DeepSveite::Simulator.new(tb, tb.clk)
+    sim.build
+
+    tb.sel.w = 1
+    sim.step
+    assert_equal 0, tb.ext.out.w
+
+    tb.ext.table[1] = 55
+    sim.step
+    assert_equal 55, tb.ext.out.w
   end
 end

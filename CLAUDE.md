@@ -530,8 +530,9 @@ DeepSveite 固有の相違点:
 * `always_comb(method_name, reads: nil)`
 
   組み合わせ回路のメソッドを登録する。`reads:` で監視する入力信号名を指定する。
-  省略すると `.in` で接続された Wire（入力ポート）と Reg を自動収集する。
-  `.in` 接続していない Wire を読む場合は `reads:` で明示する必要がある。
+  省略すると、Module のインスタンス変数のうち読み出し可能な Wire / Reg / WireArray / RegArray
+  （Module 内で定義した信号と `.in` ポート。`.out` ポートは含まない）を自動収集する。
+  WireArray / RegArray は、いずれかの要素が変化したときに再評価される。
 
   ```
   class MyModule < DeepSveite::Module

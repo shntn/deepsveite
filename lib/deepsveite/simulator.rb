@@ -185,12 +185,14 @@ module DeepSveite
       end
       DeepSveite._active_updates.clear
       DeepSveite._nba_updates.clear
+      DeepSveite._pending_evals.clear
     end
 
     # Active 領域: 更新イベントを反映して評価イベントを実行し、両方が空になるまで繰り返す
     def _run_active_region(counts)
       loop do
         _apply_updates(DeepSveite._active_updates)
+        _apply_pending_evals
         break if @_rtl_eval_queue.empty?
         counts[:delta] += 1
         _check_delta_cycles(counts[:delta])
@@ -201,6 +203,12 @@ module DeepSveite
     # NBA 領域: Reg の更新イベントを反映し、感度のある評価イベントを Active に積む
     def _run_nba_region
       _apply_updates(DeepSveite._nba_updates)
+    end
+
+    # RTL プロセス外で即時反映された更新に感度のある評価イベントを Active に積む
+    def _apply_pending_evals
+      @_rtl_eval_queue |= DeepSveite._pending_evals.to_a
+      DeepSveite._pending_evals.clear
     end
 
     def _apply_updates(updates)
