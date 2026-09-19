@@ -104,7 +104,7 @@ RTL モジュールと TLM モジュールは **Wire** を橋渡しとして通�
 RTL は Active / NBA の 2 領域で処理する（詳細と表は [docs/api.md](docs/api.md)）。
 
 - `sim.build` の最後（時刻 0）に、すべての `always_comb` を 1 回評価して収束させる（SystemVerilog と同様）
-- `Wire#w=` は更新イベント（Active）。同じプロセス内で書いた直後に読むと書く前の値が返る
+- `Wire#w=` は更新イベント（Active）
 - `Reg#r=` は NBA。`always_ff` がクロックエッジで読む値は、そのエッジ直前の値
 - `WireArray` / `RegArray` の `[]=` は、RTL プロセス内では更新イベント / NBA、プロセス外（TLM / TestBench / `initialize`）では即時反映
 - 書き込んだ値は `width` でマスクされる（負数は 2 の補数、`true` / `false` は 1 / 0）
