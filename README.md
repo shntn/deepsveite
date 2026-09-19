@@ -479,7 +479,15 @@ ruby tests/vcd.rb
 ruby tests/array.rb
 ruby tests/multidriver.rb
 ruby tests/scheduler.rb
+ruby tests/scheduler_edge.rb
+ruby tests/cosim.rb
+ruby tests/mask.rb
+ruby tests/multidriver_array.rb
+ruby tests/vcd_timing.rb
+ruby tests/examples.rb
 ```
+
+まとめて実行する場合は `rake test` を使います。
 
 ---
 
